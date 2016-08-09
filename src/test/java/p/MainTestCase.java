@@ -153,7 +153,7 @@ public class MainTestCase {
             main=new Main("192.168.1.1",group,Model.mark1);
             InetAddress inetAddress=main.findMyInetAddress();
             assertTrue(inetAddress==null);
-
+            // add tests with same ip address
         }
 	@Test public void testClickOnSecondTablet() throws Exception {
 		int first=Byte.toUnsignedInt(myInetAddress.getAddress()[3]);
