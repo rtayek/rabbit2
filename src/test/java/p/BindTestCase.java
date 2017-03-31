@@ -1,111 +1,102 @@
 package p;
 import static org.junit.Assert.*;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.SocketAddress;
-import java.util.Arrays;
-import java.util.List;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
+import java.net.*;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import org.junit.*;
 import org.junit.rules.TestRule;
-import p.Main.IO.*;
-import static p.Main.IO.*;
-public class BindTestCase {
-	@Rule public TestRule watcher=new MyTestWatcher(false);
-	@BeforeClass public static void setUpBeforeClass() throws Exception {}
-	@AfterClass public static void tearDownAfterClass() throws Exception {}
-	@Before public void setUp() throws Exception {
-		InetAddress inetAddress=InetAddress.getLocalHost();
-		int service=23456; // different service for each test case helps
-		socketAddress=new InetSocketAddress(inetAddress,service);
-	}
-	@After public void tearDown() throws Exception {
-		if(serverSocket!=null) ;// p(toS(serverSocket));
-		int active=Thread.activeCount();
-		if(printExtraThreads) {
-			// p("active: "+active);
-			if(active>threads) {
-				p("extra threads: "+(active-threads));
-				printThreads(excluded);
-			}
-		}
-	}
-	void stopListening() {
-		if(serverSocket!=null) {
-			if(serverSocket.isBound()) {
-				try {
-					serverSocket.close();
-				} catch(IOException e) {
-					e.printStackTrace();
-				}
-			}
-			if(!serverSocket.isClosed()) {
-				try {
-					serverSocket.close();
-				} catch(IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	}
-	boolean startListening() { // move to acceptor?
-		if(serverSocket==null) try {
-			serverSocket=new ServerSocket();
-			p("constructed: "+serverSocket);
-		} catch(IOException e) {
-			e.printStackTrace();
-		}
-		if(serverSocket!=null) {
-			try {
-				serverSocket.bind(socketAddress);
-				return true;
-			} catch(IOException e) {
-				p("bind exception!");
-				// e.printStackTrace();
-			}
-		}
-		return false;
-	}
-	@Test public void testStopListeningWithNullServerSocket() {
-		stopListening();
-	}
-	@Test public void testStopListeningWithNonNullServerSocket() throws Exception {
-		serverSocket=new ServerSocket();
-		stopListening();
-	}
-	@Test public void testStartListening() throws Exception {
-		serverSocket=new ServerSocket();
-		boolean ok=startListening();
-		assertTrue(ok);
-	}
-	@Test public void testStartAndStopLstening() throws Exception {
-		serverSocket=new ServerSocket();
-		boolean ok=startListening();
-		assertTrue(ok);
-		stopListening();
-	}
-	@Test public void testStartAndStopLsteningManyTimes() throws Exception {
-		for(int i=1;i<=10;i++) {
-			serverSocket=new ServerSocket();
-			// pn("before: ");
-			// p(toS(serverSocket));
-			boolean ok=startListening();
-			// p(i+": "+ok);
-			assertTrue(ok);
-			stopListening();
-			// pn("after: ");
-			// p(toS(serverSocket));
-		}
-	}
-	int threads;
-	SocketAddress socketAddress;
-	ServerSocket serverSocket;
-	boolean printExtraThreads=true;
-	static List<String> excluded=Arrays.asList(new String[]{"main","ReaderThread"});
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+import static p.IO.*;
+import static p.IO.Acceptor.*;
+@RunWith(Parameterized.class) public class BindTestCase {
+    @Rule public TestRule watcher=new MyTestWatcher(false);
+    @BeforeClass public static void setUpBeforeClass() throws Exception {}
+    @AfterClass public static void tearDownAfterClass() throws Exception {}
+    public BindTestCase(String host) {
+        this.host=host;
+    }
+    @Before public void setUp() throws Exception {
+        InetAddress inetAddress=InetAddress.getByName(host);
+        socketAddress=new InetSocketAddress(inetAddress,service);
+    }
+    @After public void tearDown() throws Exception {
+        int active=Thread.activeCount();
+        if(printExtraThreads) {
+            if(active>threads+2/* junit has 2 extra threads */) {
+                p("extra threads: "+(active-threads));
+                printThreads(excluded);
+            }
+        }
+    }
+    @Parameters public static Collection<Object[]> data() throws UnknownHostException,InterruptedException,ExecutionException {
+        Set<String> hosts=hosts();
+        p("hosts: "+hosts);
+        List<Object[]> parameters=new ArrayList<Object[]>();
+        for(String string:hosts) {
+            parameters.add(new Object[] {string});
+        }
+        return parameters;
+    }
+    boolean close() {
+        if(serverSocket!=null) {
+            if(serverSocket.isBound()) {
+                try {
+                    serverSocket.close();
+                } catch(IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if(serverSocket.isClosed()) return true;
+            else {
+                try {
+                    serverSocket.close();
+                    return true;
+                } catch(IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } else return true;
+        return false;
+    }
+    @Test public void testStopListeningWithNullServerSocket() throws Exception {
+        boolean ok=close();
+        assertTrue(ok);
+    }
+    @Test public void testStopListeningWithNonNullServerSocket() throws Exception {
+        serverSocket=new ServerSocket();
+        boolean ok=close();
+        assertTrue(ok);
+    }
+    @Test public void testStartListening() throws Exception {
+        serverSocket=new ServerSocket();
+        boolean ok=bind(serverSocket,socketAddress);
+        assertTrue(ok);
+    }
+    @Test public void testStartAndStopLstening() throws Exception {
+        serverSocket=new ServerSocket();
+        boolean ok=bind(serverSocket,socketAddress);
+        assertTrue(ok);
+        ok=close();
+        assertTrue(ok);
+    }
+    @Test public void testStartAndStopLsteningManyTimes() throws Exception {
+        for(int i=1;i<=10;i++) {
+            serverSocket=new ServerSocket();
+            boolean ok=bind(serverSocket,socketAddress);
+            assertTrue(ok);
+            close();
+            ok=close();
+            assertTrue(ok);
+        }
+    }
+    private final String host;
+    private int threads;
+    private SocketAddress socketAddress;
+    private ServerSocket serverSocket;
+    private boolean printExtraThreads=true;
+    private final Integer service=testService++; // any race conditions here?
+    private static List<String> excluded=Arrays.asList(new String[] {"main","ReaderThread"});
 }

@@ -1,270 +1,45 @@
 package p;
 import java.io.*;
-import java.math.BigInteger;
 import java.net.*;
 import java.util.*;
-import java.util.logging.Logger;
-import static p.Main.IO.*;
+import java.util.function.Consumer;
+import java.util.logging.*;
+import static p.IO.*;
+import p.IO.Acceptor;
 public class Main implements Runnable {
-    public Main(String router,Group group,Model model) {
+    public Main(Logger logger,String router,Group group,Model model) {
+        this(logger,router,group,model,null);
+        if(group.sameInetAddress) throw new RuntimeException("use ctor with service!");
+    }
+    public Main(Logger logger,String router,Group group,Model model,Integer myService) {
         // group and model are required to construct.
         // router is required to construct.
         // ip address is not required to construct
         // ip address is required to broadcast or receive
         // so maybe make these setable
         // and guard everything with a test for non null?
+        //Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+        //File logFileDirectory=getFilesDir();
+        l=logger;
+        l.setLevel(defaultLevel);
+        l.warning(this+" constructed at: "+new Date());
+        if(group.sameInetAddress!=(myService!=null)) throw new RuntimeException("use ctor with service!");
         this.router=router;
         this.group=group;
         this.model=model;
-        // model.addObserver(new Audio.AudioObserver(model));
-    }
-    interface Consumer<T> {
-        void accept(T t);
-    }
-    static class Single<T> { // was used by message factory instead of static -
-                                 // helps with testing if we need to have a
-                             // message sequence number
-        public Single(T t) {
-            this.t=t;
+        this.myService=myService;
+        sends=new Integer[group.last-group.first+1];
+        sendFailures=new Integer[group.last-group.first+1];
+        receives=new Integer[group.last-group.first+1];
+        for(int i=group.first;i<=group.last;i++) {
+            sends[i-group.first]=0;
+            sendFailures[i-group.first]=0;
+            receives[i-group.first]=0;
         }
-        public T t;
-    }
-    public static class IO {
-        public static void pn(PrintStream out,String string) {
-            out.print(string);
-            out.flush();
-        }
-        public static void pn(String string) {
-            synchronized(System.out) {
-                pn(System.out,string);
-            }
-        }
-        public static void p(PrintStream out,String string) {
-            synchronized(out) {
-                pn(out,string);
-                pn(out,System.getProperty("line.separator"));
-            }
-        }
-        public static void p(String string) {
-            p(System.out,string);
-        }
-        public static String toS(Thread thread) {
-            return "thread: name: "+thread.getName()+", state: "+thread.getState()+", is alive: "+thread.isAlive()+", is interrupted:  "+thread.isInterrupted();
-        }
-        public static String toS(ServerSocket serverSocket) {
-            return serverSocket+": isBound: "+serverSocket.isBound()+", isClosed: "+serverSocket.isClosed();
-        }
-        public static String toS(InterfaceAddress interfaceAddress) {
-            InetAddress a=interfaceAddress.getAddress();
-            String s=""+interfaceAddress.getAddress()+" "+interfaceAddress.getNetworkPrefixLength();
-            s+=" "+a.isSiteLocalAddress()+" "+a.isAnyLocalAddress()+" "+a.isLinkLocalAddress();
-            return s;
-        }
-        public static Thread[] getThreads() {
-            int big=2*Thread.activeCount();
-            Thread[] threads=new Thread[big];
-            Thread.enumerate(threads);
-            return threads;
-        }
-        public static void printThreads(List<String> excluded) {
-            // p("enter print threads");
-            Thread[] threads=getThreads();
-            for(Thread thread:threads)
-                if(thread!=null&&!excluded.contains(thread.getName())) p(toS(thread));
-            // p("exit print threads");
-        }
-        public static void printThreads() {
-            printThreads(Collections.emptyList());
-        }
-        static String toHexString(byte[] bytes) {
-            String theBytes="";
-            for(int i=0;i<bytes.length;i++) {
-                String theByte=Integer.toHexString(bytes[i]&0xff);
-                if(theByte.length()<2) theByte='0'+theByte;
-                theBytes+=theByte;
-            }
-            return theBytes;
-        }
-        static boolean isOnRouter(String router,InterfaceAddress interfaceAddress) {
-            try {
-                InetAddress routersAddress=InetAddress.getByName(router);
-                byte[] bytes=routersAddress.getAddress();
-                BigInteger routersAddressAsInteger=new BigInteger(bytes);
-                int n=interfaceAddress.getNetworkPrefixLength();
-                bytes=interfaceAddress.getAddress().getAddress();
-                BigInteger interfacesAddressAsInteger=new BigInteger(bytes);
-                if(bytes.length==4) {
-                    BigInteger mask=BigInteger.ONE.shiftLeft(n).subtract(BigInteger.ONE).shiftLeft(32-n);
-                    if(routersAddressAsInteger.and(mask).equals(interfacesAddressAsInteger.and(mask))) {
-                        return true;
-                    } else;//p("does not match router.");
-                } else;//p("ip6 address.");
-            } catch(UnknownHostException e) {}
-            return false;
-        }
-        static void filterNetworkInterface(NetworkInterface networkInterface,InterfaceAddress interfaceAddress,Consumer<InterfaceAddress> consumer) throws SocketException {
-            //p("Name: "+networkInterface.getName());
-            //p("networkInterface: "+networkInterface);
-            if(!networkInterface.isLoopback()) {
-                //p("interfaceAddress: "+toS(interfaceAddress));
-                consumer.accept(interfaceAddress);
-            } else;//p("loopback.");
-        }
-        static void filterNetworkInterface(NetworkInterface networkInterface,Consumer<InterfaceAddress> consumer) throws SocketException {
-            Enumeration<InetAddress> inetAddresses=networkInterface.getInetAddresses();
-            List<InterfaceAddress> interfaceAddresses=networkInterface.getInterfaceAddresses();
-            if(interfaceAddresses.size()>0) {
-                //p("display name: "+networkInterface.getDisplayName());
-                for(InterfaceAddress interfaceAddress:interfaceAddresses)
-                    filterNetworkInterface(networkInterface,interfaceAddress,consumer);
-            } else;//p(networkInterface.getDisplayName()+" has no addresses.");
-        }
-        public static void filterNetworkInterfaces(Consumer<InterfaceAddress> consumer) throws SocketException {
-            Enumeration<NetworkInterface> netowrkInterfaces=NetworkInterface.getNetworkInterfaces();
-            for(NetworkInterface networkInterface:Collections.list(netowrkInterfaces))
-                filterNetworkInterface(networkInterface,consumer);
-        }
-        static class Connection extends Thread {
-            // maybe only should implement runnable?
-            Connection(Socket socket,Consumer<String> consumer,boolean outGoing) {
-                this.socket=socket;
-                this.consumer=consumer;
-                setName("connection #"+serialNumber+(outGoing?" from: ":" to: ")+socket);
-                InputStream inputStream=null;
-                try {
-                    inputStream=socket.getInputStream();
-                } catch(IOException e) {
-                    e.printStackTrace();
-                }
-                in=new BufferedReader(new InputStreamReader(inputStream));
-                try {
-                    out=new OutputStreamWriter(socket.getOutputStream());
-                } catch(IOException e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e);
-                }
-            }
-            String read() {
-                String string;
-                try {
-                    string=in.readLine();
-                    return string;
-                } catch(IOException e) {
-                    if(isClosing) p("closing");
-                    else e.printStackTrace();
-                }
-                return null;
-            }
-            boolean send(String string) {
-                try {
-                    // p("sending: '"+string+'\'');
-                    out.write(string+'\n');
-                    out.flush();
-                    return true;
-                } catch(IOException e) {
-                    if(isClosing) p("closing");
-                    else e.printStackTrace();
-                    return false;
-                }
-            }
-            @Override public void run() {
-                Thread.currentThread().setName("listening on: "+socket);
-                // p(toS(this));
-                // maybe put this is a try block to catch anything wierd?
-                while(!done) {
-                    String string=read();
-                    received++;
-                    if(string!=null) {
-                        if(consumer!=null) consumer.accept(string);
-                    } else done=true;
-                }
-            }
-            public void close() {
-                synchronized(isClosing) {
-                    isClosing=true;
-                    try {
-                        // p("closing socket.");
-                        socket.close();
-                        // p(Thread.currentThread().getName()+" joining with:
-                        // "+this);
-                        try {
-                            this.join(0);
-                            // p("joined with: "+this);
-                            // p("thread: "+toS(this));
-                            if(this.getState().equals(Thread.State.TERMINATED)||this.getState().equals(Thread.State.NEW)) ;
-                            else p("thread has strange state after join: "+toS(this));
-                        } catch(InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    } catch(IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            final Consumer<String> consumer;
-            private final Socket socket;
-            final BufferedReader in;
-            final Writer out;
-            boolean done;
-            volatile Boolean isClosing=false;
-            int received;
-            final int serialNumber=++serialNumbers;
-            static int serialNumbers=0;
-        }
-        static class Acceptor extends Thread {
-            Acceptor(ServerSocket serverSocket,Consumer<Socket> consumer) {
-                this.serverSocket=serverSocket;
-                this.consumer=consumer;
-                setName("acceptor #"+serialNumber+" on: "+serverSocket);
-            }
-            @Override public void run() {
-                // p(toS(this));
-                while(!done)
-                    try {
-                        Socket socket=serverSocket.accept();
-                        // should check socket's address in group's range for
-                        // security
-                        if(consumer!=null) consumer.accept(socket);
-                    } catch(IOException e) {
-                        if(isClosing) ;// p("closing, caught: "+e);
-                        else {
-                            p("unexpected, caught: "+e);
-                            e.printStackTrace();
-                        }
-                        done=true;
-                    }
-            }
-            public void close() {
-                synchronized(isClosing) {
-                    isClosing=true;
-                    try {
-                        // p("closing server socket.");
-                        serverSocket.close();
-                        // p(Thread.currentThread().getName()+" joining with:
-                        // "+this);
-                        try {
-                            this.join(3);
-                            // p("joined with: "+this);
-                            // p("thread: "+toS(this));
-                            if(!this.getState().equals(Thread.State.TERMINATED)) p("2 thread has strange state after join: "+toS(this));
-                        } catch(InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    } catch(IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            public final ServerSocket serverSocket;
-            final Consumer<Socket> consumer;
-            boolean done;
-            volatile Boolean isClosing=false;
-            final int serialNumber=++serialNumbers;
-            static int serialNumbers=0;
-        }
+        model.addObserver(new Audio.AudioObserver(model));
     }
     public static class Group { // no need to clone unless we start storing
-                                    // history or something in here.
+        // history or something in here.
         public Group(int first,int last,boolean sameInetAddress) {
             this.first=first;
             this.last=last;
@@ -272,21 +47,36 @@ public class Main implements Runnable {
             other2=0;
             this.sameInetAddress=sameInetAddress;
         }
-        boolean isInetAddressInRange(InetAddress inetAddress) {
-            int lowOrderOctet=lowOrderOctet(inetAddress);
-            return first<=lowOrderOctet&&lowOrderOctet<=last;
+        // try to make this just a set of addresses as opposed to only a range
+        InetAddress findMyInetAddress(String router) {
+            Set<InterfaceAddress> networkInterfaces;
+            networkInterfaces=findMyInetAddresses(router);
+            p("on router's network: "+networkInterfaces);
+            if(networkInterfaces.size()>0) {
+                InetAddress inetAddress=networkInterfaces.iterator().next().getAddress();
+                p("checking: "+inetAddress);
+                if(isInGroup(inetAddress)) {
+                    p("using: "+inetAddress);
+                    return inetAddress;
+                } else p(inetAddress+" is not in group: "+this);
+            } else p("no inetAddresses!");
+            return null;
         }
-        int service(InetAddress ipAddress) {
+        boolean isInGroup(InetAddress ipAddress) {
             int lowOrderOctet=lowOrderOctet(ipAddress);
-            int service=serviceBase+lowOrderOctet;
+            boolean isInRange=first<=lowOrderOctet&&lowOrderOctet<=last;
+            return isInRange;
+        }
+        int service(InetAddress inetAddress,Integer myService) {
+            int service=myService!=null?myService:(serviceBase+lowOrderOctet(inetAddress));
             return service;
         }
         Set<InetSocketAddress> socketAddresses(InetAddress myInetAddress) {
             Set<InetSocketAddress> socketAddresses=new LinkedHashSet<>();
-            // InetAddress ipAddress=inetSocketAddress.getAddress();
-            if(sameInetAddress) for(int i=first;i<=last;i++)
-                socketAddresses.add(new InetSocketAddress(myInetAddress,serviceBase+i));
-            else {
+            if(sameInetAddress) { // only used for testing on one machine
+                for(int i=first;i<=last;i++)
+                    socketAddresses.add(new InetSocketAddress(myInetAddress,serviceBase+i));
+            } else { // actually only needs the network prefix.
                 byte[] bytes=myInetAddress.getAddress();
                 for(int i=first;i<=last;i++) {
                     bytes[3]=(byte)i;
@@ -302,67 +92,99 @@ public class Main implements Runnable {
         }
         private boolean send(String string,InetSocketAddress inetSocketAddress) {
             Socket socket;
-            try {
-                socket=new Socket(inetSocketAddress.getAddress(),inetSocketAddress.getPort());
-            } catch(IOException e) {
-                e.printStackTrace();
-                return false;
+            boolean old=false;
+            if(old) {
+                try {
+                    socket=new Socket(inetSocketAddress.getAddress(),inetSocketAddress.getPort());
+                } catch(IOException e) {
+                    //p("caught: "+e);
+                    return false;
+                }
+            } else {
+                Et et=new Et();
+                socket=new Socket();
+                try {
+                    socket.connect(inetSocketAddress,connectionTimeout);
+                } catch(Exception e) {
+                    //p("caught: "+e);
+                    return false;
+                }
             }
-            Connection connection=new Connection(socket,null,true);
+            Connection connection=new Connection(socket,null,null,true);
             boolean ok=connection.send(string);
             connection.close();
             return ok;
         }
-        private int broadcast(String string,InetAddress myInetAddress) {
-            int connectionOrSendFailures=0;
-            for(InetSocketAddress socketAddress:socketAddresses(myInetAddress)) {
-                boolean ok=send(string,socketAddress);
-                if(!ok) connectionOrSendFailures++;
-            }
-            if(connectionOrSendFailures>0) p("broadcast has: "+connectionOrSendFailures+" failure(s)");
-            return connectionOrSendFailures;
+        @Override public String toString() {
+            return "Group [first="+first+", last="+last+", other="+other+", other2="+other2+", serviceBase="+serviceBase+", sameInetAddress="+sameInetAddress+"]";
         }
-        final Integer first,last,other,other2;
+        private final Integer first,last,other,other2;
+        public int connectionTimeout=300;
         public final int serviceBase=10_000;
         final boolean sameInetAddress;
     }
     public class Tablet {
         private Tablet() {}
-        boolean receive(String string) {
-            if(string.length()!=model.buttons) {
-                p("bad message: "+string);
-                return false;
+        boolean receive(String string,InetAddress inetAddress) {
+            boolean rc=false;
+            if(!group.isInGroup(inetAddress)) l.warning("message from: "+inetAddress+" is not in group: "+string);
+            else if(string==null) p("end of file from: "+inetAddress);
+            else if(string.isEmpty()) p("empty message from: "+inetAddress);
+            else if(string.length()!=model.buttons) p("bad message: "+string);
+            else {
+                for(int i=0;i<string.length();i++) {
+                    char c=string.charAt(i);
+                    if(c=='T'||c=='F') {
+                        boolean newState=c=='T'?true:false;
+                        model.setState(i+1,newState);
+                        rc=true;
+                    } else {
+                        p("bad string: "+string);
+                        break;
+                    }
+                }
+                rc=true;
+                if(group.isInGroup(inetAddress)) receives[lowOrderOctet(inetAddress)-group.first]++;
+                else p("address: "+inetAddress+" is out of range: "+group.first+':'+group.last);
             }
-            for(int i=0;i<string.length();i++) {
-                char c=string.charAt(i);
-                if(c=='T'||c=='F') {
-                    boolean newState=c=='T'?true:false;
-                    model.setState(i+1,newState);
-                } else p("bad string: "+string);
-            }
-            return true;
+            return rc;
         }
         public synchronized boolean isListening() {
             return isListening;
         }
-        public synchronized boolean startListening(SocketAddress socketAddress) {
-            try {
-                ServerSocket serverSocket=new ServerSocket();
-                serverSocket.bind(socketAddress);
-                if(serverSocket.isBound()) {
-                    acceptor=new Acceptor(serverSocket,socket-> {
-                        // p("accepted new connection:"+socket);
-                        Connection connection=new Connection(socket,string-> {
-                            receive(string);
-                        },false);
-                        connection.start();
-                    });
-                    acceptor.start();
-                    isListening=true;
-                    return true;
+        // looks like we need to get rid of the lambdas
+        // since they need api 24.
+        public synchronized boolean startListening() {
+            if(myInetAddress==null) return false;
+            if(isListening) stopListening();
+            int service=group.service(myInetAddress,myService);
+            SocketAddress socketAddress=new InetSocketAddress(myInetAddress,service);
+            Consumer<Socket> socketConsumer=new Consumer<Socket>() {
+                @Override public void accept(final Socket socket) {
+                    p("accepted new connection:"+socket);
+                    Consumer<String> stringConsumer=new Consumer<String>() {
+                        @Override public void accept(final String string) {
+                            if(group.isInGroup(socket.getInetAddress())) receive(string,socket.getInetAddress());
+                            else l.warning("message from: "+socket.getInetAddress()+" is not in group: "+string);
+                        }
+                    };
+                    Consumer<Exception> exceptionConsumer=new Consumer<Exception>() {
+                        @Override public void accept(final Exception exception) {
+                            l.warning("caught: "+exception);
+                        }
+                    };
+                    Connection connection=new Connection(socket,stringConsumer,exceptionConsumer,false);
+                    connection.start();
                 }
-            } catch(IOException e) {
-                e.printStackTrace();
+            };
+            acceptor=Acceptor.acceptor(socketAddress,socketConsumer);
+            if(acceptor!=null) {
+                acceptor.start();
+                isListening=true;
+                // how to tell if this guy crashes?
+                // done will be true if we left the run loop,
+                // maybe use that?
+                return true;
             }
             return false;
         }
@@ -372,17 +194,37 @@ public class Main implements Runnable {
             // how about the connections?
             // close them also?
         }
+        private void broadcast(final String string,InetAddress myInetAddress,Integer myService) {
+            broadcasts++;
+            Set<InetSocketAddress> inetSocketAddresses=group.socketAddresses(myInetAddress);
+            Iterator<InetSocketAddress> j=inetSocketAddresses.iterator();
+            for(int i=0;i<inetSocketAddresses.size();i++) {
+                final int k=i;
+                final InetSocketAddress inetSocketAddress=j.next();
+                new Thread(new Runnable() {
+                    @Override public void run() {
+                        Et et=new Et();
+                        boolean ok=group.send(string,inetSocketAddress);
+                        p("send #"+broadcasts+" to: "+inetSocketAddress+" took: "+et);
+                        if(!ok) sendFailures[k]++;
+                        // if we use some random set of addresses instead of a range
+                        // then we will need to keep the stats in maps.
+                        sends[k]++;
+                    }
+                },"send #"+broadcasts+" to: "+inetSocketAddress).start();
+            }
+        }
         public void click(int id,InetAddress myInetAddress) {
-            // p("click: "+id+" in: "+this);
+            p("tablet click: "+id);
+            Et et=new Et();
+            p("sync took: "+et);
             try {
                 if(1<=id&&id<=model.buttons) {
-                    synchronized(model) {
-                        if(model.resetButtonId!=null&&id==model.resetButtonId) model.reset();
-                        else model.setState(id,!model.state(id));
-                        if(myInetAddress!=null) {
-                            String message=model.toCharacters();
-                            int connectionOrSendFailures=group.broadcast(message,myInetAddress);
-                        }
+                    if(model.resetButtonId!=null&&id==model.resetButtonId) model.reset();
+                    else model.setState(id,!model.state(id));
+                    if(myInetAddress!=null) {
+                        String message=model.toCharacters();
+                        broadcast(message,myInetAddress,myService);
                     }
                 } else l.warning(id+" is not a model button!");
             } catch(Exception e) {
@@ -392,10 +234,18 @@ public class Main implements Runnable {
         }
         Acceptor acceptor;
         private boolean isListening;
+        int broadcasts;
     }
     public Tablet instance() {
         if(instance==null) instance=new Tablet();
         return instance;
+    }
+    public static int toUnsignedInt(byte x) {
+        return ((int)x)&0xff;
+    }
+    public static int lowOrderOctet(InetAddress ipAddress) {
+        int lowOrderOctet=toUnsignedInt(ipAddress.getAddress()[3]);
+        return lowOrderOctet;
     }
     public static boolean isAndroid() {
         return System.getProperty("http.agent")!=null;
@@ -403,86 +253,85 @@ public class Main implements Runnable {
     public boolean isRouterOk() {
         return router!=null&&Exec.canWePing(router,1_000);
     }
-    InetAddress findMyInetAddress() {
-        Set<InterfaceAddress> networkInterfaces;
-        try {
-            networkInterfaces=findMyInetAddresses();
-            //p("on router's network: "+networkInterfaces);
-            if(networkInterfaces.size()>0) {
-                InetAddress inetAddress=networkInterfaces.iterator().next().getAddress();
-                if(group.isInetAddressInRange(inetAddress)) {
-                    //p("using: "+inetAddress);
-                    return inetAddress;
-                } ;//else p(inetAddress+" is not in range!");
-            } else p("no inetAddresses!");
-        } catch(SocketException e) {
-            p("caught: "+e);
-        }
-        return null;
-    }
     static void sleep(int n) {
         try {
-            Thread.sleep(5_000);
+            Thread.sleep(n);
         } catch(InterruptedException e) {
-            p("caught: "+e);
+            p("sleep caught: "+e);
         }
+    }
+    void printStats() {
+        p("failures: "+Arrays.asList(sendFailures));
+        p("sends:    "+Arrays.asList(sends));
+        p("receives: "+Arrays.asList(receives));
+    }
+    void loop() {
+        while(myInetAddress==null) { // may change when router cycles power
+            p("we do not know our ip address!");
+            if(true) try {
+                myInetAddress=InetAddress.getLocalHost();
+            } catch(UnknownHostException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            else myInetAddress=group.findMyInetAddress(router);
+            if(myInetAddress!=null) p("found my ip address: "+myInetAddress);
+            sleep(sleep);
+        }
+        while(!isRouterOk()) { // maybe this should be first?
+            p("router in not up!");
+            myInetAddress=null; // may change when router cycles power
+            sleep(sleep);
+        }
+        p("router is up.");
+        if(instance().isListening) p("listening on: "+instance().acceptor.toString());
+        else {
+            p("not listening.");
+            boolean ok=instance().startListening();
+            if(ok) p("start listening.");
+        }
+        if(!isRouterOk()) {
+            if(instance().isListening) {
+                p("something is not working, stopping listening.");
+                instance().stopListening();
+            }
+        }
+        printStats();
+        printThreads();
     }
     @Override public void run() {
         p("router: "+router);
         while(true) {
-            if(router==null||myInetAddress==null||!isRouterOk()) {
-                if(instance().isListening) {
-                    p("something is not working, stopping listening.");
-                    instance().stopListening();
-                }
+            try {
+                loop();
+                sleep(sleep);
+            } catch(Exception e) {
+                p(this+" caught: "+e);
             }
-            while(myInetAddress==null) {
-                p("we do not know our ip address!");
-                myInetAddress=findMyInetAddress();
-                sleep(5_000);
-            }
-            p("ip address: "+myInetAddress);
-            while(!isRouterOk()) {
-                p("router in not up!");
-                sleep(5_000);
-            }
-            p("router is up.");
-            if(!instance().isListening) {
-                int service=group.serviceBase+group.first;
-                InetSocketAddress inetSocketAddress=new InetSocketAddress(myInetAddress,service);
-                boolean ok=instance().startListening(inetSocketAddress);
-                if(ok) p("listening.");
-            }
-            sleep(5_000);
         }
     }
-    static int lowOrderOctet(InetAddress ipAddress) {
-        int lowOrderOctet=Byte.toUnsignedInt(ipAddress.getAddress()[3]);
-        return lowOrderOctet;
-    }
     public static void main(String[] args) throws Exception {
+        File logFileDirectory=new File("logFileDirectory");
+        Logger logger=Logger.getLogger("xyzzy");
+        addFileHandler(logger,logFileDirectory,"tablet");
         int first=100,n=32;
+        // this can't run if the the tablet has a static ip address
+        // at least it can't if the address is not in the groups range.
         Group group=new Group(first,first+n-1,false);
-        new Main(defaultRouter,group,Model.mark1).run();
+        p("group: "+group);
+        new Main(logger,routerOnMyPc,group,Model.mark1).run();
     }
-    Set<InterfaceAddress> findMyInetAddresses() throws SocketException {
-        final Set<InterfaceAddress> networkInterfaces=new LinkedHashSet<>();
-        IO.filterNetworkInterfaces(new Consumer<InterfaceAddress>() {
-            @Override public void accept(InterfaceAddress interfaceAddress) {
-                if(isOnRouter(router,interfaceAddress)) {
-                    //p(interfaceAddress+" is on router: "+router);
-                    networkInterfaces.add(interfaceAddress);
-                }
-            }
-        });
-        return networkInterfaces;
-    }
+    public int sleep=10_000;
     public final String router;
-    volatile InetAddress myInetAddress;
-    final Single<Integer> single=new Single<>(0); // maybe it's just an int now?
+    public String centralHost;
+    public final Integer myService; // just for testing
+    public volatile InetAddress myInetAddress;
+    public final Integer[] sends,sendFailures,receives;
     public final Model model;
     private Tablet instance;
     final Group group;
-    public final Logger l=Logger.getLogger("xyzzy");
+    public final Logger l;
+    public static Level defaultLevel=Level.WARNING;
     public static final String defaultRouter="192.168.0.1";
+    public static final String routerOnMyPc="192.168.1.1";
 }

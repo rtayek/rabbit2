@@ -4,19 +4,17 @@ import java.awt.*;
 import java.awt.event.*;
 import java.net.*;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.logging.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import p.Main.Group;
 import p.Main.Tablet;
 import q.GuiAdapter.GuiAdapterABC;
-import p.Audio;
 import p.Main;
 import p.Model;
 import p.Audio.AudioObserver;
 import static p.Main.*;
-import static p.Main.IO.*;
+import static p.IO.*;
 enum Where {
     top(BorderLayout.PAGE_START),bottom(BorderLayout.PAGE_END),right(BorderLayout.LINE_END),left(BorderLayout.LINE_START),center(BorderLayout.CENTER);
     Where(String k) {
@@ -101,7 +99,7 @@ public class Swing extends MainGui implements Observer, ActionListener {
 		box.setLayout(new BoxLayout(box,BoxLayout.LINE_AXIS));
 		EmptyBorder e2=new EmptyBorder(size*12/10,size,size*12/10,size);
 		box.setBorder(e2);
-		Insets x=box.getInsets();
+		//Insets x=box.getInsets();
 		// p(x.toString());
 		JPanel left=new JPanel();
 		GridLayout grid=new GridLayout(colors.rows,colors.columns,size*2/10,size*2/10);
@@ -215,17 +213,18 @@ public class Swing extends MainGui implements Observer, ActionListener {
 		return gui;
 	}
 	public static void main(String[] arguments) throws Exception {
+	        Logger logger=Logger.getLogger("xyzzy");
 		InetAddress inetAddress=InetAddress.getLocalHost();
-		int first=Byte.toUnsignedInt(inetAddress.getAddress()[3]);
+		int first=toUnsignedInt(inetAddress.getAddress()[3]);
 		InetAddress router=Inet4Address.getByName("192.168.1.1");
 		Group group=new Group(first,first,false);
 		int service=group.serviceBase+first;
 		InetSocketAddress inetSocketAddress=new InetSocketAddress(inetAddress,service);
-		Main main=new Main(defaultRouter,group,Model.mark1.clone());
+		Main main=new Main(logger,defaultRouter,group,Model.mark1.clone());
 		Tablet tablet=main.instance();
 		main.model.addObserver(create(main));
 		main.model.addObserver(new AudioObserver(main.model));
-		tablet.startListening(inetSocketAddress);
+		tablet.startListening();
 	}
 	final Colors colors=new Colors();
 	final AbstractButton[] buttons;

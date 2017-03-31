@@ -1,9 +1,7 @@
 package q;
 import java.util.*;
 import p.Main;
-import p.Main.Tablet;
-import static p.Main.*;
-import static p.Main.IO.*;
+import static p.IO.*;
 public interface GuiAdapter extends Observer {
 	void setButtonState(int id,boolean state); // of the widget!
 	void setButtonText(int id,String string); // of the widget!

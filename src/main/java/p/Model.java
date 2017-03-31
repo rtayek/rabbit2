@@ -1,6 +1,6 @@
 package p;
 import java.util.Observable;
-import static p.Main.IO.*;
+import static p.IO.*;
 public class Model extends Observable implements Cloneable {
 	public Model(int buttons,Integer resetButtonId) {
 		this(buttons,resetButtonId,++serialNumbers);

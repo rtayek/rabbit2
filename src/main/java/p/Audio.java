@@ -1,13 +1,11 @@
 package p;
 import java.io.BufferedInputStream;
+import java.util.function.Consumer;
 import java.util.*;
 import java.util.Observable;
-import java.util.concurrent.Callable;
-//import java.util.concurrent.*;
-import java.util.function.Consumer;
 import javax.sound.sampled.*;
 import static p.Main.*;
-import static p.Main.IO.*;
+import static p.IO.*;
 public interface Audio {
     enum Sound {
         electronic_chime_kevangc_495939803,glass_ping_go445_1207030150,store_door_chime_mike_koenig_570742973;
@@ -25,7 +23,6 @@ public interface Audio {
                 timer=new Timer();
                 timer.schedule(new TimerTask() {
                     @Override public void run() {
-                        p("start chimer.");
                         Audio.audio.play(Sound.electronic_chime_kevangc_495939803);
                     }
                 },0,10_000);
@@ -33,7 +30,6 @@ public interface Audio {
         }
         public synchronized void stopChimer() {
             if(isChimimg()) {
-                p("stop chimer.");
                 timer.cancel();
                 timer=null;
             }
@@ -75,8 +71,8 @@ public interface Audio {
                     if(Audio.Instance.sound) if(consumer!=null) consumer.accept(sound);
                     else p("callback is not set: "+sound);
                 }
-                public void setCallback(Consumer<Sound> callback) {
-                    this.consumer=callback;
+                public void setCallback(Consumer<Sound> consumer) {
+                    this.consumer=consumer;
                 }
                 public Consumer<Sound> consumer;
             }
@@ -105,24 +101,15 @@ public interface Audio {
                         p("failed to play: "+sound);
                     }
                 }
-                private class AudioCallable implements Callable<Void>,Runnable {
-                    private AudioCallable(Sound sound) {
-                        this.sound=sound;
-                    }
-                    @Override public void run() {
-                        Thread.currentThread().setName(getClass().getName());
-                        play_(sound);
-                    }
-                    @Override public Void call() throws Exception {
-                        run();
-                        return null;
-                    }
-                    final Sound sound;
-                }
                 @Override public void play(final Sound sound) {
                     if(Audio.Instance.sound) if(runOnSeparateThread) {
                         p("starting audio thread for: "+sound);
-                        new Thread(new AudioCallable(sound)).start();
+                        Runnable runnable=new Runnable() {
+                            @Override public void run() {
+                                play_(sound);
+                            }
+                        };
+                        new Thread(runnable,"play: "+sound).start();
                     } else play_(sound);
                 }
                 boolean runOnSeparateThread=true;

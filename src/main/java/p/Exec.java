@@ -5,15 +5,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import static java.lang.Math.*;
 import java.util.*;
-import p.Main.IO.*;
-import static p.Main.IO.p;
+import static p.IO.p;
 public class Exec {
 	public Exec(String command) {
 		processBuilder=new ProcessBuilder(command);
 	}
 	public Exec(String[] strings) {
 		List<String> command=Arrays.asList(strings);
-		p("command: "+command);
 		processBuilder=new ProcessBuilder(command);
 	}
 	public static String output(InputStream inputStream) throws IOException {
@@ -34,9 +32,7 @@ public class Exec {
 		Process process;
 		try {
 			process=processBuilder.start();
-			// p("started process.");
 			rc=process.waitFor();
-			// p("process returned: "+rc);
 			output=output(process.getInputStream());
 			error=output(process.getErrorStream());
 		} catch(IOException e) {
@@ -49,7 +45,6 @@ public class Exec {
 			p("caught: "+e);
 			e.printStackTrace();
 		}
-		// printThreads();
 		return this;
 	}
 	public void print() {
@@ -61,10 +56,8 @@ public class Exec {
 		p("err: '"+error+"'");
 	}
 	public static int exec(String[] strings) {
-		// p("building process: "+Arrays.asList(strings));
 		Exec exec=new Exec(strings);
 		exec.run();
-		exec.print();
 		return exec.rc;
 	}
 	public static int exec(String command) {
@@ -72,12 +65,10 @@ public class Exec {
 		try {
 			Process proc=runtime.exec(command);
 			proc.waitFor();
-			print(proc.exitValue(),Exec.output(proc.getInputStream()),Exec.output(proc.getErrorStream()));
 			return proc.exitValue();
 		} catch(IOException e) {
 			e.printStackTrace();
 		} catch(InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return -1;
