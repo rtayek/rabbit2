@@ -11,7 +11,6 @@ import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import p.IO;
 import p.LogServer.Copier;
 @RunWith(Parameterized.class) public class LogServerTestCase {
     @Rule public TestRule watcher=new MyTestWatcher();

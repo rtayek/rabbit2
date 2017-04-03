@@ -1,13 +1,13 @@
 package p;
-import static p.IO.*;
-import static p.Main.*;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.logging.*;
 public class IO {
+    public interface Consumer<T> { // instead of 1.8 definition
+        void accept(T t);
+    }
     public static class Et {
         public Et() {
             reset();
@@ -253,7 +253,7 @@ public class IO {
         // p("exit print threads");
     }
     public static void printThreads() {
-        printThreads(Collections.emptyList());
+        printThreads(Collections.<String> emptyList());
     }
     static String toHexString(byte[] bytes) {
         String theBytes="";
@@ -286,9 +286,8 @@ public class IO {
         } else;//p(networkInterface.getDisplayName()+" has no addresses.");
     }
     public static void filterNetworkInterfaces(Consumer<InterfaceAddress> consumer) {
-        Enumeration<NetworkInterface> netowrkInterfaces;
         try {
-            netowrkInterfaces=NetworkInterface.getNetworkInterfaces();
+            Enumeration<NetworkInterface> netowrkInterfaces=NetworkInterface.getNetworkInterfaces();
             for(NetworkInterface networkInterface:Collections.list(netowrkInterfaces))
                 filterNetworkInterface(networkInterface,consumer);
         } catch(SocketException e) {
@@ -373,6 +372,21 @@ public class IO {
             logger.warning("added file handler: "+handler);
         } catch(Exception e) {
             logger.warning("add file handler caught: "+e);
+        }
+    }
+    public static void main(String args[]) {
+        try {
+            Enumeration<NetworkInterface> netowrkInterfaces=NetworkInterface.getNetworkInterfaces();
+            for(NetworkInterface networkInterface:Collections.list(netowrkInterfaces))
+                p("interface: "+networkInterface.getName()
+                +" "+networkInterface.isUp()
+                +" "+networkInterface.isLoopback()
+                +" "+networkInterface.isPointToPoint()
+                +networkInterface.getInterfaceAddresses());
+        } catch(SocketException e) {
+            p("getNetworkInterfaces() caught: "+e);
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
     }
     static Integer testService=12345;

@@ -1,5 +1,6 @@
 package p;
 import static org.junit.Assert.*;
+import p.IO.*;
 import static p.IO.*;
 import static p.Main.*;
 import static p.MainTestCase.*;
@@ -7,7 +8,6 @@ import java.io.IOException;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
 import java.util.logging.Level;
 import org.junit.*;
 import org.junit.rules.TestRule;
@@ -23,25 +23,28 @@ import org.junit.runners.Parameterized.Parameters;
     public ClientTestCase(String host) {
         this.host=host;
     }
-
     @Before public void setUp() throws Exception {
         Main.defaultLevel=Level.ALL;
         threads=Thread.activeCount();
         inetAddress=InetAddress.getByName(host);
         ServerSocket serverSocket=new ServerSocket(service);
-        if(true) acceptor=new Acceptor(serverSocket,socket-> {
-            incoming=new Connection(socket,null,null,false);
-            incoming.start();
-        });
-        else {
-            Consumer<Socket> consumer=new Consumer<Socket>() {
-                @Override public void accept(Socket socket) {
-                    incoming=new Connection(socket,string->p("incoming received: "+string),e->p("incoming caught exception: "+e),false);
-                    incoming.start();
-                }
-            };
-            acceptor=new Acceptor(serverSocket,consumer);
-        }
+        final Consumer<String> stringConsumer=new Consumer<String>() {
+            @Override public void accept(String string) {
+                p("incoming received: "+string);
+            }
+        };
+        final Consumer<Exception> exceptionConsumer=new Consumer<Exception>() {
+            @Override public void accept(Exception exception) {
+                p("incoming caught: "+exception);
+            }
+        };
+        Consumer<Socket> consumer=new Consumer<Socket>() {
+            @Override public void accept(Socket socket) {
+                incoming=new Connection(socket,stringConsumer,exceptionConsumer,false);
+                incoming.start();
+            }
+        };
+        acceptor=new Acceptor(serverSocket,consumer);
         acceptor.start();
     }
     @After public void tearDown() throws Exception {
@@ -94,7 +97,7 @@ import org.junit.runners.Parameterized.Parameters;
     }
     @Test public void testClientSend() throws UnknownHostException,IOException,InterruptedException {
         Socket socket=new Socket(inetAddress,service);
-        outgoing=new Connection(socket,string->p("received: "+string),e->p("exception: "+e),true);
+        outgoing=new Connection(socket,null,null,true);
         outgoing.send("foo");
         assertEquals(1,outgoing.sent);
         Thread.sleep(10);

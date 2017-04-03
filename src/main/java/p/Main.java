@@ -2,7 +2,6 @@ package p;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.logging.*;
 import static p.IO.*;
 import p.IO.Acceptor;
@@ -40,6 +39,7 @@ public class Main implements Runnable {
     }
     public static class Group { // no need to clone unless we start storing
         // history or something in here.
+        // maybe needed if we have a strange hybrid combination of tablets?
         public Group(int first,int last,boolean sameInetAddress) {
             this.first=first;
             this.last=last;
@@ -48,13 +48,13 @@ public class Main implements Runnable {
             this.sameInetAddress=sameInetAddress;
         }
         // try to make this just a set of addresses as opposed to only a range
+        // no, that may not work
         InetAddress findMyInetAddress(String router) {
             Set<InterfaceAddress> networkInterfaces;
             networkInterfaces=findMyInetAddresses(router);
-            p("on router's network: "+networkInterfaces);
             if(networkInterfaces.size()>0) {
+                if(networkInterfaces.size()>1) p("more than one network interface: "+networkInterfaces);
                 InetAddress inetAddress=networkInterfaces.iterator().next().getAddress();
-                p("checking: "+inetAddress);
                 if(isInGroup(inetAddress)) {
                     p("using: "+inetAddress);
                     return inetAddress;
@@ -76,7 +76,7 @@ public class Main implements Runnable {
             if(sameInetAddress) { // only used for testing on one machine
                 for(int i=first;i<=last;i++)
                     socketAddresses.add(new InetSocketAddress(myInetAddress,serviceBase+i));
-            } else { // actually only needs the network prefix.
+            } else { // actually only needs the network prefix here
                 byte[] bytes=myInetAddress.getAddress();
                 for(int i=first;i<=last;i++) {
                     bytes[3]=(byte)i;
@@ -84,7 +84,7 @@ public class Main implements Runnable {
                         InetAddress inetAddress=InetAddress.getByAddress(bytes);
                         socketAddresses.add(new InetSocketAddress(inetAddress,serviceBase+i));
                     } catch(UnknownHostException e) {
-                        e.printStackTrace();
+                        p("can not get inet address for: "+bytes[0]+'.'+bytes[1]+'.'+bytes[2]+'.'+bytes[3]);
                     }
                 }
             }
