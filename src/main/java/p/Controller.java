@@ -71,7 +71,7 @@ public class Controller {
                     tokens=splitNext(command,2);
                     if(tokens.length==1) try {
                         int buttonId=Integer.valueOf(tokens[0]);
-                        main.instance().click(buttonId,main.myInetAddress);
+                        main.instance().click(buttonId);
                     } catch(Exception e) {
                         p(out,"controller split caught: '"+e+"'");
                         p(out,"syntax error: "+command);
@@ -138,8 +138,11 @@ public class Controller {
     }
     public static void main(String[] arguments) throws UnknownHostException,InterruptedException,ExecutionException {
         Logger logger=Logger.getLogger("testxyzzy");
+        logger.setLevel(defaultLevel);
         InetAddress inetAddress=InetAddress.getLocalHost();
         int first=toUnsignedInt(inetAddress.getAddress()[3]);
+        addFileHandler(logger,LogFileDirectory,""+inetAddress);
+        logger.warning("added file handler");
         Group group=new Group(first,first,false);
         Main main=new Main(logger,defaultRouter,group,Model.mark1);
         new Controller(main).run();

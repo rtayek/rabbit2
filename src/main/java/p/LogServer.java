@@ -2,7 +2,6 @@ package p;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.logging.SocketHandler;
 import static p.IO.*;
 public class LogServer implements Runnable {
     public static class Pair<First,Second> {
@@ -15,9 +14,9 @@ public class LogServer implements Runnable {
         }
         public First first;
         public Second second;
-    }    // need some way to end a log file when tablet stops
-    // need some way to use a date or prefix.
-    // combine this class with logging handler?
+    } // need some way to end a log file when tablet stops
+      // need some way to use a date or prefix.
+      // combine this class with logging handler?
     private class LogFile {
         private LogFile(Socket socket,String prefix,int sequenceNumber) {
             this.socket=socket;
@@ -36,10 +35,10 @@ public class LogServer implements Runnable {
             return 100;
         }
         private File file(int n) {
-            return new File("log",name(n));
+            return new File(logServerlogDirectory,name(n));
         }
         File file() {
-            return new File("log",name(sequenceNumber));
+            return new File(logServerlogDirectory,name(sequenceNumber));
         }
         private String name(int n) {
             InetAddress inetAddress=socket.getInetAddress();
@@ -149,9 +148,6 @@ public class LogServer implements Runnable {
         LogFile logFile; // may be null for testing
         public volatile boolean isShuttingdown;
     }
-    public LogServer(String host,int service,String prefix) throws IOException {
-        this(host,service,null,prefix);
-    }
     public LogServer(String host,int service,Factory factory,String prefix) {
         this.host=host;
         this.service=service;
@@ -166,6 +162,10 @@ public class LogServer implements Runnable {
             throw new RuntimeException(e);
         }
         this.factory=factory;
+        if(!logServerlogDirectory.exists()) {
+            if(logServerlogDirectory.mkdir()) p("created: "+logServerlogDirectory);
+            else p("can not create: "+logServerlogDirectory);
+        }
     }
     @Override public void run() {
         p("LogServer running on: "+serverSocket);
@@ -218,30 +218,22 @@ public class LogServer implements Runnable {
     }
     public static void print() {}
     public static void main(String args[]) {
-        for(Pair<String,Integer> pair:logServerHosts.keySet())
-            if(pair.second.equals(defaultLogServerService)) try {
-                LogServer logServer=new LogServer(pair.first,pair.second,null);
+        String[] routers=args!=null&&args.length>0?args:new String[] {"192.168.1.1"};
+        Set<LogServer> logServers=new LinkedHashSet<>();
+        for(String router:routers){
+                Set<InterfaceAddress> interfaceAddresses=IO.findMyInterfaceAddressesOnRouter(router);
+                InetAddress inetAddress=interfaceAddresses.iterator().next().getAddress();
+                LogServer logServer=new LogServer(inetAddress.getHostName(),defaultLogServerService,null,null);
                 new Thread(logServer).start();
                 logServers.add(logServer);
-            } catch(Exception e) {
-                p("caught: '"+e+"'");
             }
         if(logServers.size()==0) {
             p("no log servers were created!");
-            p("check the interfaces to see if they are up: "+logServerHosts.keySet());
+            p("check the interfaces to see if they are up: "+logServers);
         }
     }
+    public static final File logServerlogDirectory=new File("logServerlogDirectory");
     public static final int defaultLogServerService=5000;
-    public static final String laptopToday="192.168.0.100";
-    public static final Map<Pair<String,Integer>,SocketHandler> logServerHosts=new LinkedHashMap<>();
-    static {
-        for(Integer service:new Integer[] {defaultLogServerService,/*chainsawLogServerService,lilithLogServerService,*/}) {
-            //logServerHosts.put(new Pair<String,Integer>(raysPc,service),null);
-            //logServerHosts.put(new Pair<String,Integer>("192.168.0.138"/*raysPcOnTabletNetworkToday*/,service),null);
-            logServerHosts.put(new Pair<String,Integer>(laptopToday,service),null);
-        }
-    }
-    public static final Set<LogServer> logServers=new LinkedHashSet<>();
     public final String host;
     public final int service;
     public final String prefix;

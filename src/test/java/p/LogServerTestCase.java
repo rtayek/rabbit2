@@ -55,7 +55,7 @@ import p.LogServer.Copier;
         return parameters;
     }
     @Test public void testConnectAndWriteFile() throws Exception,IOException {
-        logServer=new LogServer(host,service,getClass().getSimpleName());
+        logServer=new LogServer(host,service,null,getClass().getSimpleName());
         thread=new Thread(new Runnable() {
             @Override public void run() {
                 logServer.run();
@@ -99,7 +99,7 @@ import p.LogServer.Copier;
         assertTrue(writer.toString().contains(expected));
     }
     @Test public void testSockethandlerAndWriteFiles() throws Exception {
-        logServer=new LogServer(host,service,getClass().getSimpleName());
+        logServer=new LogServer(host,service,null,getClass().getSimpleName());
         thread=new Thread(new Runnable() {
             @Override public void run() {
                 logServer.run();
@@ -124,7 +124,7 @@ import p.LogServer.Copier;
     @Test public void testRestartLogserver() throws InterruptedException,IOException {
         // only passes because we don't test anything
         // just tests the restart capability!
-        logServer=new LogServer(host,service,getClass().getSimpleName());
+        logServer=new LogServer(host,service,null,getClass().getSimpleName());
         thread=new Thread(new Runnable() {
             @Override public void run() {
                 logServer.run();

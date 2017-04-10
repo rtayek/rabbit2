@@ -296,21 +296,26 @@ public class IO {
             e.printStackTrace();
         }
     }
-    static Set<String> hosts() throws UnknownHostException {
+    static Set<String> hosts() {
         Set<String> hosts=new TreeSet<>();
         hosts.add("127.0.0.1");
         hosts.add("localhost");
-        InetAddress inetAddress=InetAddress.getLocalHost();
-        hosts.add(inetAddress.getHostAddress());
-        //hosts.add(testingHost);
-        Set<InterfaceAddress> interfaceAddresses=findMyInetAddresses(null);
+        InetAddress inetAddress;
+        try {
+            inetAddress=InetAddress.getLocalHost();
+            hosts.add(inetAddress.getHostAddress());
+        } catch(UnknownHostException e) {
+            p("get local host throws: "+e);
+        }
+        Set<InterfaceAddress> interfaceAddresses=findMyInterfaceAddressesOnRouter(null);
         for(InterfaceAddress interfaceAddress:interfaceAddresses) {
             String host=interfaceAddress.getAddress().getHostAddress();
             hosts.add(host);
         }
         return hosts;
     }
-    static Set<InterfaceAddress> findMyInetAddresses(final String router) {
+    // finds addresses on the router
+    static Set<InterfaceAddress> findMyInterfaceAddressesOnRouter(final String router) {
         final Set<InterfaceAddress> networkInterfaces=new LinkedHashSet<>();
         IO.filterNetworkInterfaces(new Consumer<InterfaceAddress>() {
             @Override public void accept(InterfaceAddress interfaceAddress) {
@@ -337,7 +342,7 @@ public class IO {
         });
         return networkInterfaces;
     }
-    public static boolean isOnRouter(String router,int n,InetAddress interfaceInetAddress) throws UnknownHostException {
+    static boolean isOnRouter(String router,int n,InetAddress interfaceInetAddress) throws UnknownHostException {
         InetAddress routersAddress=InetAddress.getByName(router);
         byte[] bytes=routersAddress.getAddress();
         BigInteger routersAddressAsInteger=new BigInteger(bytes);
@@ -351,7 +356,7 @@ public class IO {
         } else;//p("ip6 address.");
         return false;
     }
-    static boolean isOnRouter(String router,InterfaceAddress interfaceAddress) {
+    public static boolean isOnRouter(String router,InterfaceAddress interfaceAddress) {
         try {
             int n=interfaceAddress.getNetworkPrefixLength();
             InetAddress interfaceInetAddress=interfaceAddress.getAddress();
@@ -361,7 +366,22 @@ public class IO {
         }
         return false;
     }
+    public static SocketHandler socketHandler(String host,Integer service) {
+        try {
+            SocketHandler socketHandler=new SocketHandler(host,service);
+            // socketHandler.setFormatter(new LoggingHandler());
+            socketHandler.setLevel(Level.ALL);
+            return socketHandler;
+        } catch(IOException e) {
+            //p("caught: '"+e+"' constructing socket handler on: "+host+":"+service);
+        }
+        return null;
+    }
     public static void addFileHandler(Logger logger,File logFileDirectory,String prefix) {
+        if(!logFileDirectory.exists()) {
+            if(logFileDirectory.mkdir()) p("created: "+logFileDirectory);
+            else p("can not create: "+logFileDirectory);
+        }
         try {
             String pattern=prefix+".%u.%g.log";
             File logFile=new File(logFileDirectory,pattern);
@@ -375,19 +395,19 @@ public class IO {
         }
     }
     public static void main(String args[]) {
+        Logger logger=Logger.getLogger("xyzzy");
+        addFileHandler(logger,LogFileDirectory,"IO");
         try {
             Enumeration<NetworkInterface> netowrkInterfaces=NetworkInterface.getNetworkInterfaces();
             for(NetworkInterface networkInterface:Collections.list(netowrkInterfaces))
-                p("interface: "+networkInterface.getName()
-                +" "+networkInterface.isUp()
-                +" "+networkInterface.isLoopback()
-                +" "+networkInterface.isPointToPoint()
-                +networkInterface.getInterfaceAddresses());
+                p("interface: "+networkInterface.getName()+" "+networkInterface.isUp()+" "+networkInterface.isLoopback()+" "+networkInterface.isPointToPoint()
+                        +networkInterface.getInterfaceAddresses());
         } catch(SocketException e) {
             p("getNetworkInterfaces() caught: "+e);
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
+    static File LogFileDirectory=new File("logFileDirectory");
     static Integer testService=12345;
 }

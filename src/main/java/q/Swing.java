@@ -214,13 +214,10 @@ public class Swing extends MainGui implements Observer, ActionListener {
 	}
 	public static void main(String[] arguments) throws Exception {
 	        Logger logger=Logger.getLogger("xyzzy");
-		InetAddress inetAddress=InetAddress.getLocalHost();
-		int first=toUnsignedInt(inetAddress.getAddress()[3]);
-		InetAddress router=Inet4Address.getByName("192.168.1.1");
-		Group group=new Group(first,first,false);
-		int service=group.serviceBase+first;
-		InetSocketAddress inetSocketAddress=new InetSocketAddress(inetAddress,service);
-		Main main=new Main(logger,defaultRouter,group,Model.mark1.clone());
+		int first=100,n=20;
+		Group group=new Group(first,first+n-1,false);
+		Main main=new Main(logger,routerOnMyPc,group,Model.mark1.clone());
+		new Thread(main).start();
 		Tablet tablet=main.instance();
 		main.model.addObserver(create(main));
 		main.model.addObserver(new AudioObserver(main.model));

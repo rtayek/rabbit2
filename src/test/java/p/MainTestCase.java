@@ -102,7 +102,7 @@ public class MainTestCase {
         Tablet tablet=main.instance();
         boolean ok=tablet.startListening();
         assertTrue(ok);
-        tablet.click(1,myInetAddress);
+        tablet.click(1);
         assertTrue(main.model.state(1));
         Thread.sleep(200);
         tablet.stopListening();
@@ -125,7 +125,7 @@ public class MainTestCase {
             tablet.startListening();
         }
         Main m1=mains.get(0);
-        m1.instance().click(1,myInetAddress);
+        m1.instance().click(1);
         Thread.sleep(100);
         for(Main main:mains)
             p("model: "+main.model);
@@ -140,7 +140,7 @@ public class MainTestCase {
         int first=100,n=32;
         Group group=new Group(first,first+n-1,false);
         Main main=new Main(logger,routerOnMyPc,group,Model.mark1);
-        Set<InterfaceAddress> set=findMyInetAddresses(main.router);
+        Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(main.router);
         //p("interface addresses: "+set);
         assertTrue(set.size()>0);
         InetAddress inetAddress=set.iterator().next().getAddress();
@@ -150,7 +150,7 @@ public class MainTestCase {
         int first=11,n=32;
         Group group=new Group(first,first+n-1,false);
         Main main=new Main(logger,routerOnMyPc,group,Model.mark1);
-        Set<InterfaceAddress> set=findMyInetAddresses(main.router);
+        Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(main.router);
         //p("interface addresses: "+set);
         assertTrue(set.size()>0);
         InetAddress inetAddress=set.iterator().next().getAddress();
@@ -161,7 +161,7 @@ public class MainTestCase {
         Group group=new Group(first,first+n-1,false);
         if(Exec.canWePing(defaultRouter,1_000)) {
             Main main=new Main(logger,defaultRouter,group,Model.mark1);
-            Set<InterfaceAddress> set=findMyInetAddresses(defaultRouter);
+            Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(defaultRouter);
             p("interface addresses: "+set);
             assertTrue(set.size()>0);
             InetAddress inetAddress=set.iterator().next().getAddress();
@@ -203,18 +203,18 @@ public class MainTestCase {
             assertTrue(tablet.isListening());
         }
         Main m1=mains.get(0);
-        m1.instance().click(1,myInetAddress);
+        m1.instance().click(1);
         Thread.sleep(m1.group.connectionTimeout+100);
         m1.printStats();
         for(Main main:mains)
             assertTrue(main.model.state(1));
         Main m2=mains.get(1);
-        m2.instance().click(1,myInetAddress);
+        m2.instance().click(1);
         Thread.sleep(m2.group.connectionTimeout+100);
         for(Main main:mains)
             assertFalse(main.model.state(1));
         Main m3=mains.get(2);
-        m3.instance().click(Model.mark1.resetButtonId,myInetAddress);
+        m3.instance().click(Model.mark1.resetButtonId);
         Thread.sleep(100);
         for(Main main:mains)
             for(int i=1;i<=Model.mark1.buttons;i++)

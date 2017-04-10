@@ -97,8 +97,14 @@ proguard/
 *.log
 log/
 
+
 # Android Studio Navigation editor temp files
 .navigation/
 
 ### Android Patch ###
 gen-external-apklibs
+
+# mine
+*.lck
+logServerLogDirectory/
+logFileDirectory/

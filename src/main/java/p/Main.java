@@ -6,6 +6,9 @@ import java.util.logging.*;
 import static p.IO.*;
 import p.IO.Acceptor;
 public class Main implements Runnable {
+    // make this work without knowing the ssid of the router
+    // use un-routable or specify prefix or take whatever?
+    // lets use our router for a while
     public Main(Logger logger,String router,Group group,Model model) {
         this(logger,router,group,model,null);
         if(group.sameInetAddress) throw new RuntimeException("use ctor with service!");
@@ -20,7 +23,6 @@ public class Main implements Runnable {
         //Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
         //File logFileDirectory=getFilesDir();
         l=logger;
-        l.setLevel(defaultLevel);
         l.warning(this+" constructed at: "+new Date());
         if(group.sameInetAddress!=(myService!=null)) throw new RuntimeException("use ctor with service!");
         this.router=router;
@@ -51,7 +53,7 @@ public class Main implements Runnable {
         // no, that may not work
         InetAddress findMyInetAddress(String router) {
             Set<InterfaceAddress> networkInterfaces;
-            networkInterfaces=findMyInetAddresses(router);
+            networkInterfaces=IO.findMyInterfaceAddressesOnRouter(router);
             if(networkInterfaces.size()>0) {
                 if(networkInterfaces.size()>1) p("more than one network interface: "+networkInterfaces);
                 InetAddress inetAddress=networkInterfaces.iterator().next().getAddress();
@@ -194,19 +196,21 @@ public class Main implements Runnable {
             // how about the connections?
             // close them also?
         }
-        private void broadcast(final String string,InetAddress myInetAddress,Integer myService) {
+        private void broadcast(final String string,Integer myService) {
             broadcasts++;
             Set<InetSocketAddress> inetSocketAddresses=group.socketAddresses(myInetAddress);
             Iterator<InetSocketAddress> j=inetSocketAddresses.iterator();
             for(int i=0;i<inetSocketAddresses.size();i++) {
                 final int k=i;
                 final InetSocketAddress inetSocketAddress=j.next();
+                p("sending to: "+inetSocketAddress);
                 new Thread(new Runnable() {
                     @Override public void run() {
                         Et et=new Et();
                         boolean ok=group.send(string,inetSocketAddress);
                         p("send #"+broadcasts+" to: "+inetSocketAddress+" took: "+et);
                         if(!ok) sendFailures[k]++;
+                        else p("send to: "+inetSocketAddress+" suceeded!");
                         // if we use some random set of addresses instead of a range
                         // then we will need to keep the stats in maps.
                         sends[k]++;
@@ -214,18 +218,16 @@ public class Main implements Runnable {
                 },"send #"+broadcasts+" to: "+inetSocketAddress).start();
             }
         }
-        public void click(int id,InetAddress myInetAddress) {
+        public void click(int id) {
             p("tablet click: "+id);
-            Et et=new Et();
-            p("sync took: "+et);
             try {
                 if(1<=id&&id<=model.buttons) {
                     if(model.resetButtonId!=null&&id==model.resetButtonId) model.reset();
                     else model.setState(id,!model.state(id));
                     if(myInetAddress!=null) {
                         String message=model.toCharacters();
-                        broadcast(message,myInetAddress,myService);
-                    }
+                        broadcast(message,myService);
+                    } else l.warning("inet address is null!");
                 } else l.warning(id+" is not a model button!");
             } catch(Exception e) {
                 l.severe("click caught: "+e);
@@ -268,7 +270,7 @@ public class Main implements Runnable {
     void loop() {
         while(myInetAddress==null) { // may change when router cycles power
             p("we do not know our ip address!");
-            if(true) try {
+            if(false) try {
                 myInetAddress=InetAddress.getLocalHost();
             } catch(UnknownHostException e) {
                 // TODO Auto-generated catch block
@@ -279,18 +281,33 @@ public class Main implements Runnable {
             sleep(sleep);
         }
         while(!isRouterOk()) { // maybe this should be first?
-            p("router in not up!");
+            p("router is not up!");
             myInetAddress=null; // may change when router cycles power
             sleep(sleep);
         }
         p("router is up.");
-        if(instance().isListening) p("listening on: "+instance().acceptor.toString());
-        else {
+        if(instance().isListening) {
+            p("listening on: "+instance().acceptor.toString());
+            if(socketHandler==null) {
+                socketHandler=IO.socketHandler(LogServerHost,LogServer.defaultLogServerService);
+                if(socketHandler!=null) {
+                    p("added socket handler to: "+LogServerHost);
+                    l.addHandler(socketHandler);
+                    l.warning("added socket handler to: "+LogServerHost);
+                }
+                else p("could not add socket handler to: "+LogServerHost);
+            }
+        } else {
             p("not listening.");
             boolean ok=instance().startListening();
             if(ok) p("start listening.");
+            else p("can not start listening");
         }
         if(!isRouterOk()) {
+            if(socketHandler!=null) {
+                l.removeHandler(socketHandler);
+                socketHandler=null;
+            }
             if(instance().isListening) {
                 p("something is not working, stopping listening.");
                 instance().stopListening();
@@ -301,7 +318,9 @@ public class Main implements Runnable {
     }
     @Override public void run() {
         p("router: "+router);
+        l.info("enter run");
         while(true) {
+            l.info(router+" "+myInetAddress+" "+instance().isListening());
             try {
                 loop();
                 sleep(sleep);
@@ -311,19 +330,14 @@ public class Main implements Runnable {
         }
     }
     public static void main(String[] args) throws Exception {
-        File logFileDirectory=new File("logFileDirectory");
         Logger logger=Logger.getLogger("xyzzy");
-        addFileHandler(logger,logFileDirectory,"tablet");
-        int first=100,n=32;
-        // this can't run if the the tablet has a static ip address
-        // at least it can't if the address is not in the groups range.
+        int first=100,n=20;
         Group group=new Group(first,first+n-1,false);
         p("group: "+group);
         new Main(logger,routerOnMyPc,group,Model.mark1).run();
     }
     public int sleep=10_000;
     public final String router;
-    public String centralHost;
     public final Integer myService; // just for testing
     public volatile InetAddress myInetAddress;
     public final Integer[] sends,sendFailures,receives;
@@ -331,7 +345,9 @@ public class Main implements Runnable {
     private Tablet instance;
     final Group group;
     public final Logger l;
+    SocketHandler socketHandler;
     public static Level defaultLevel=Level.WARNING;
     public static final String defaultRouter="192.168.0.1";
     public static final String routerOnMyPc="192.168.1.1";
+    public static final String LogServerHost="192.168.1.108";
 }

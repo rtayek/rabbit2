@@ -12,7 +12,7 @@ public interface GuiAdapter extends Observer {
 		public void processClick(int index) {
 			int id=index+1;
 			p("click: "+index+" in: "+this);
-			if(1<=id&&id<=main.model.buttons) main.instance().click(id,null);
+			if(1<=id&&id<=main.model.buttons) main.instance().click(id);
 			else p(id+" is bad button id!");
 		}
 		@Override public void update(Observable observable,Object hint) {
