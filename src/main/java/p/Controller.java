@@ -141,10 +141,10 @@ public class Controller {
         logger.setLevel(defaultLevel);
         InetAddress inetAddress=InetAddress.getLocalHost();
         int first=toUnsignedInt(inetAddress.getAddress()[3]);
-        addFileHandler(logger,LogFileDirectory,""+inetAddress);
+        addFileHandler(logger,new File(logFileDirectory),""+inetAddress);
         logger.warning("added file handler");
         Group group=new Group(first,first,false);
-        Main main=new Main(logger,defaultRouter,group,Model.mark1);
+        Main main=new Main(defaultProperties,logger,group,Model.mark1);
         new Controller(main).run();
     }
     protected final Main main;

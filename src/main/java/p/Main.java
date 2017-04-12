@@ -9,23 +9,22 @@ public class Main implements Runnable {
     // make this work without knowing the ssid of the router
     // use un-routable or specify prefix or take whatever?
     // lets use our router for a while
-    public Main(Logger logger,String router,Group group,Model model) {
-        this(logger,router,group,model,null);
+    public Main(Properties properties,Logger logger,Group group,Model model) {
+        this(properties,logger,group,model,null);
         if(group.sameInetAddress) throw new RuntimeException("use ctor with service!");
     }
-    public Main(Logger logger,String router,Group group,Model model,Integer myService) {
+    public Main(Properties properties,Logger logger,Group group,Model model,Integer myService) {
         // group and model are required to construct.
         // router is required to construct.
         // ip address is not required to construct
         // ip address is required to broadcast or receive
         // so maybe make these setable
         // and guard everything with a test for non null?
-        //Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
-        //File logFileDirectory=getFilesDir();
+        router=properties.getProperty("router");
+        logServerHost=properties.getProperty("logServerHost");
         l=logger;
         l.warning(this+" constructed at: "+new Date());
         if(group.sameInetAddress!=(myService!=null)) throw new RuntimeException("use ctor with service!");
-        this.router=router;
         this.group=group;
         this.model=model;
         this.myService=myService;
@@ -289,13 +288,12 @@ public class Main implements Runnable {
         if(instance().isListening) {
             p("listening on: "+instance().acceptor.toString());
             if(socketHandler==null) {
-                socketHandler=IO.socketHandler(LogServerHost,LogServer.defaultLogServerService);
+                socketHandler=IO.socketHandler(logServerHost,LogServer.defaultLogServerService);
                 if(socketHandler!=null) {
-                    p("added socket handler to: "+LogServerHost);
+                    p("added socket handler to: "+logServerHost);
                     l.addHandler(socketHandler);
-                    l.warning("added socket handler to: "+LogServerHost);
-                }
-                else p("could not add socket handler to: "+LogServerHost);
+                    l.warning("added socket handler to: "+logServerHost);
+                } else p("could not add socket handler to: "+logServerHost);
             }
         } else {
             p("not listening.");
@@ -329,15 +327,37 @@ public class Main implements Runnable {
             }
         }
     }
+    public static Properties properties(File file) {
+        Properties properties=new Properties(defaultProperties);
+        if(!file.exists()) try {
+            Writer writer=new FileWriter(file);
+            defaultProperties.store(writer,"initial");
+            writer.close();
+            p("created: "+defaultProperties);
+        } catch(IOException e) {
+            p("can not store: "+file);
+        }
+        try {
+            FileReader fileReader=new FileReader(file);
+            properties.load(fileReader);
+            p("loaded: "+properties);
+        } catch(IOException e) {
+            p("can not load: "+file);
+        }
+        return properties;
+    }
     public static void main(String[] args) throws Exception {
+        p("default properties: "+defaultProperties);
+        Properties properties=properties(new File(propertiesFilename));
         Logger logger=Logger.getLogger("xyzzy");
+        addFileHandler(logger,new File(logFileDirectory),"main");
         int first=100,n=20;
         Group group=new Group(first,first+n-1,false);
         p("group: "+group);
-        new Main(logger,routerOnMyPc,group,Model.mark1).run();
+        new Main(properties,logger,group,Model.mark1).run();
     }
     public int sleep=10_000;
-    public final String router;
+    public final String router,logServerHost;
     public final Integer myService; // just for testing
     public volatile InetAddress myInetAddress;
     public final Integer[] sends,sendFailures,receives;
@@ -347,7 +367,12 @@ public class Main implements Runnable {
     public final Logger l;
     SocketHandler socketHandler;
     public static Level defaultLevel=Level.WARNING;
-    public static final String defaultRouter="192.168.0.1";
-    public static final String routerOnMyPc="192.168.1.1";
-    public static final String LogServerHost="192.168.1.108";
+    public static final String propertiesFilename="tablet.properties";
+    public static final Properties defaultProperties=new Properties();
+    static {
+        defaultProperties.setProperty("router","192.168.1.1");
+        defaultProperties.setProperty("logServerHost","192.168.1.108");
+        defaultProperties.setProperty("first","100");
+        defaultProperties.setProperty("last","131");
+    }
 }

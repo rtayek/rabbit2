@@ -396,7 +396,7 @@ public class IO {
     }
     public static void main(String args[]) {
         Logger logger=Logger.getLogger("xyzzy");
-        addFileHandler(logger,LogFileDirectory,"IO");
+        addFileHandler(logger,new File(logFileDirectory),"IO");
         try {
             Enumeration<NetworkInterface> netowrkInterfaces=NetworkInterface.getNetworkInterfaces();
             for(NetworkInterface networkInterface:Collections.list(netowrkInterfaces))
@@ -408,6 +408,6 @@ public class IO {
             e.printStackTrace();
         }
     }
-    static File LogFileDirectory=new File("logFileDirectory");
+    public static String logFileDirectory="logFileDirectory";
     static Integer testService=12345;
 }

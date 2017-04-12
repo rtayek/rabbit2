@@ -23,7 +23,7 @@ public class MainTestCase {
         // maybe use a real address?
         int first=toUnsignedInt(myInetAddress.getAddress()[3]);
         Group group=new Group(first,first,false); // only one so it does not matter
-        main=new Main(logger,routerOnMyPc,group,Model.mark1.clone());
+        main=new Main(defaultProperties,logger,group,Model.mark1.clone());
     }
     @After public void tearDown() throws Exception {
         int active=Thread.activeCount();
@@ -45,7 +45,7 @@ public class MainTestCase {
         int first=toUnsignedInt(myInetAddress.getAddress()[3]);
         int n=32;
         Group group=new Group(first,first+n-1,false);
-        Main main=new Main(logger,defaultRouter,group,Model.mark1.clone());
+        Main main=new Main(defaultProperties,logger,group,Model.mark1.clone());
         Set<InetSocketAddress> socketAddresses=main.group.socketAddresses(myInetAddress);
         p("false: "+socketAddresses);
         Iterator<InetSocketAddress> i=socketAddresses.iterator();
@@ -57,7 +57,7 @@ public class MainTestCase {
         Group group2=new Group(first,first+n-1,true);
         // looks like main gets constructed with different services!
         // really, how does it do that?
-        main=new Main(logger,defaultRouter,group2,Model.mark1.clone(),first);
+        main=new Main(defaultProperties,logger,group2,Model.mark1.clone(),first);
         socketAddresses=main.group.socketAddresses(myInetAddress);
         p("true: "+socketAddresses);
         i=socketAddresses.iterator();
@@ -118,7 +118,7 @@ public class MainTestCase {
         ArrayList<Main> mains=new ArrayList<>();
         for(int i=0;i<n;i++) {
             int myService=group.serviceBase+first+i;
-            Main main=new Main(logger,defaultRouter,group,Model.mark1.clone(),myService);
+            Main main=new Main(defaultProperties,logger,group,Model.mark1.clone(),myService);
             mains.add(main);
             Tablet tablet=main.instance();
             main.myInetAddress=myInetAddress;
@@ -139,7 +139,7 @@ public class MainTestCase {
     @Test public void testFindMyDhcpInetAddressOnMyRouter() throws Exception {
         int first=100,n=32;
         Group group=new Group(first,first+n-1,false);
-        Main main=new Main(logger,routerOnMyPc,group,Model.mark1);
+        Main main=new Main(defaultProperties,logger,group,Model.mark1);
         Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(main.router);
         //p("interface addresses: "+set);
         assertTrue(set.size()>0);
@@ -149,7 +149,7 @@ public class MainTestCase {
     @Test public void testFindMyStaticInetAddressOnMyRouter() throws Exception {
         int first=11,n=32;
         Group group=new Group(first,first+n-1,false);
-        Main main=new Main(logger,routerOnMyPc,group,Model.mark1);
+        Main main=new Main(defaultProperties,logger,group,Model.mark1);
         Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(main.router);
         //p("interface addresses: "+set);
         assertTrue(set.size()>0);
@@ -159,15 +159,16 @@ public class MainTestCase {
     @Test public void testFindMyDhcpInetAddressOnDefaultRouter() throws Exception {
         int first=100,n=32;
         Group group=new Group(first,first+n-1,false);
-        if(Exec.canWePing(defaultRouter,1_000)) {
-            Main main=new Main(logger,defaultRouter,group,Model.mark1);
-            Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(defaultRouter);
+        String router=defaultProperties.getProperty("router");
+        if(Exec.canWePing(router,1_000)) {
+            Main main=new Main(defaultProperties,logger,group,Model.mark1);
+            Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(router);
             p("interface addresses: "+set);
             assertTrue(set.size()>0);
             InetAddress inetAddress=set.iterator().next().getAddress();
             if(!group.isInGroup(inetAddress)) p("dhcp inet address: "+inetAddress+" is not in group: "+group);
         } else {
-            p("can not ping: "+defaultRouter);
+            p("can not ping: "+router);
             p("router or interface is not up!");
         }
     }
@@ -182,7 +183,7 @@ public class MainTestCase {
         
         group=new Group(11,11+n-1,true);
         int myService=group.serviceBase+first+0;
-        main=new Main(logger,routerOnMyPc,group,Model.mark1,myService);
+        main=new Main(defaultProperties,logger,group,Model.mark1,myService);
         InetAddress inetAddress=group.findMyInetAddress(main.router);
         //p("inet address: "+inetAddress);
         assertTrue(inetAddress==null);
@@ -195,7 +196,7 @@ public class MainTestCase {
         // use group to get list of socket addresses?
         for(int i=0;i<n;i++) {
             int myService=group.serviceBase+first+i;
-            Main main=new Main(logger,defaultRouter,group,Model.mark1.clone(),myService);
+            Main main=new Main(defaultProperties,logger,group,Model.mark1.clone(),myService);
             mains.add(main);
             Tablet tablet=main.instance();
             main.myInetAddress=myInetAddress;

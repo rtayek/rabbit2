@@ -23,7 +23,7 @@ public class SwingTestCase {
         Group group=new Group(first,first,false);
         int service=group.serviceBase+first;
         InetSocketAddress inetSocketAddress=new InetSocketAddress(inetAddress,service);
-        Main main=new Main(logger,routerOnMyPc,group,Model.mark1.clone());
+        Main main=new Main(defaultProperties,logger,group,Model.mark1.clone());
         Tablet tablet=main.instance();
         main.model.addObserver(swing=Swing.create(main));
         main.model.addObserver(new AudioObserver(main.model));

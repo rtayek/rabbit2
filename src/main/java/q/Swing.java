@@ -216,7 +216,7 @@ public class Swing extends MainGui implements Observer, ActionListener {
 	        Logger logger=Logger.getLogger("xyzzy");
 		int first=100,n=20;
 		Group group=new Group(first,first+n-1,false);
-		Main main=new Main(logger,routerOnMyPc,group,Model.mark1.clone());
+		Main main=new Main(defaultProperties,logger,group,Model.mark1.clone());
 		new Thread(main).start();
 		Tablet tablet=main.instance();
 		main.model.addObserver(create(main));
