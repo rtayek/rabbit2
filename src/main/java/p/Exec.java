@@ -94,7 +94,6 @@ public class Exec {
                 // fix this!
                 ok=true;
             else p("output: "+exec.output);
-            p("returning: "+ok);
             return ok;
         }
     }

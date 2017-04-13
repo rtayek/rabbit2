@@ -22,6 +22,7 @@ public interface Audio {
                 timer=new Timer();
                 timer.schedule(new TimerTask() {
                     @Override public void run() {
+                        Thread.currentThread().setName("chimer");
                         Audio.audio.play(Sound.electronic_chime_kevangc_495939803);
                     }
                 },0,10_000);

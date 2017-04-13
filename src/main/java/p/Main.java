@@ -129,7 +129,7 @@ public class Main implements Runnable {
         boolean receive(String string,InetAddress inetAddress) {
             boolean rc=false;
             if(!group.isInGroup(inetAddress)) l.warning("message from: "+inetAddress+" is not in group: "+string);
-            else if(string==null) p("end of file from: "+inetAddress);
+            else if(string==null) ;
             else if(string.isEmpty()) p("empty message from: "+inetAddress);
             else if(string.length()!=model.buttons) p("bad message: "+string);
             else {
@@ -162,7 +162,6 @@ public class Main implements Runnable {
             SocketAddress socketAddress=new InetSocketAddress(myInetAddress,service);
             Consumer<Socket> socketConsumer=new Consumer<Socket>() {
                 @Override public void accept(final Socket socket) {
-                    p("accepted new connection:"+socket);
                     Consumer<String> stringConsumer=new Consumer<String>() {
                         @Override public void accept(final String string) {
                             if(group.isInGroup(socket.getInetAddress())) receive(string,socket.getInetAddress());
@@ -266,61 +265,56 @@ public class Main implements Runnable {
         p("sends:    "+Arrays.asList(sends));
         p("receives: "+Arrays.asList(receives));
     }
-    void loop() {
-        while(myInetAddress==null) { // may change when router cycles power
-            p("we do not know our ip address!");
-            if(false) try {
-                myInetAddress=InetAddress.getLocalHost();
-            } catch(UnknownHostException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-            else myInetAddress=group.findMyInetAddress(router);
-            if(myInetAddress!=null) p("found my ip address: "+myInetAddress);
-            sleep(sleep);
-        }
-        while(!isRouterOk()) { // maybe this should be first?
-            p("router is not up!");
-            myInetAddress=null; // may change when router cycles power
-            sleep(sleep);
-        }
-        p("router is up.");
-        if(instance().isListening) {
-            p("listening on: "+instance().acceptor.toString());
-            if(socketHandler==null) {
-                socketHandler=IO.socketHandler(logServerHost,LogServer.defaultLogServerService);
-                if(socketHandler!=null) {
-                    p("added socket handler to: "+logServerHost);
-                    l.addHandler(socketHandler);
-                    l.warning("added socket handler to: "+logServerHost);
-                } else p("could not add socket handler to: "+logServerHost);
-            }
-        } else {
-            p("not listening.");
-            boolean ok=instance().startListening();
-            if(ok) p("start listening.");
-            else p("can not start listening");
-        }
-        if(!isRouterOk()) {
-            if(socketHandler!=null) {
-                l.removeHandler(socketHandler);
-                socketHandler=null;
-            }
-            if(instance().isListening) {
-                p("something is not working, stopping listening.");
-                instance().stopListening();
-            }
-        }
-        printStats();
-        printThreads();
-    }
     @Override public void run() {
         p("router: "+router);
         l.info("enter run");
         while(true) {
-            l.info(router+" "+myInetAddress+" "+instance().isListening());
+            l.info(myInetAddress+" "+instance().isListening());
             try {
-                loop();
+                while(myInetAddress==null) { // may change when router cycles power
+                    l.warning("we do not know our ip address!");
+                    if(false) try {
+                        myInetAddress=InetAddress.getLocalHost();
+                    } catch(UnknownHostException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    else myInetAddress=group.findMyInetAddress(router);
+                    if(myInetAddress!=null) l.warning("found my ip address: "+myInetAddress);
+                    sleep(sleep);
+                }
+                while(!isRouterOk()) { // maybe this should be first?
+                    l.warning("router is not up!");
+                    myInetAddress=null; // may change when router cycles power
+                    sleep(sleep);
+                }
+                if(instance().isListening) {
+                    if(socketHandler==null) {
+                        socketHandler=IO.socketHandler(logServerHost,LogServer.defaultLogServerService);
+                        if(socketHandler!=null) {
+                            l.addHandler(socketHandler);
+                            l.warning("added socket handler to: "+logServerHost);
+                        } else p("could not add socket handler to: "+logServerHost);
+                    }
+                } else {
+                    l.warning("not listening.");
+                    boolean ok=instance().startListening();
+                    if(ok) l.warning("start listening on: "+instance().acceptor.toString());
+                    else l.warning("can not start listening");
+                }
+                if(!isRouterOk()) {
+                    l.warning("router is not ok.");
+                    if(socketHandler!=null) {
+                        l.removeHandler(socketHandler);
+                        socketHandler=null;
+                    }
+                    if(instance().isListening) {
+                        p("something is not working, stopping listening.");
+                        instance().stopListening();
+                    }
+                }
+                printStats();
+                printThreads();
                 sleep(sleep);
             } catch(Exception e) {
                 p(this+" caught: "+e);
