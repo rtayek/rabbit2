@@ -201,14 +201,15 @@ public class Main implements Runnable {
             for(int i=0;i<inetSocketAddresses.size();i++) {
                 final int k=i;
                 final InetSocketAddress inetSocketAddress=j.next();
-                p("sending to: "+inetSocketAddress);
                 new Thread(new Runnable() {
                     @Override public void run() {
                         Et et=new Et();
                         boolean ok=group.send(string,inetSocketAddress);
-                        p("send #"+broadcasts+" to: "+inetSocketAddress+" took: "+et);
-                        if(!ok) sendFailures[k]++;
-                        else p("send to: "+inetSocketAddress+" suceeded!");
+                        if(ok) p("send #"+broadcasts+" to: "+inetSocketAddress+" took: "+et);
+                        else {
+                            sendFailures[k]++;
+                            p("send #"+broadcasts+" to: "+inetSocketAddress+" failed after: "+et);
+                        }
                         // if we use some random set of addresses instead of a range
                         // then we will need to keep the stats in maps.
                         sends[k]++;
