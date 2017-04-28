@@ -38,7 +38,7 @@ import p.LogServer.Copier;
         BufferedWriter bufferedWriter=new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         bufferedWriter.write(expected);
         bufferedWriter.flush();
-        bufferedWriter.close();
+        socket.close();
         Thread.sleep(100);
         logServer.stop();
         thread.join(1000);
@@ -46,7 +46,7 @@ import p.LogServer.Copier;
         assertTrue(writer.toString().contains(expected));
     }
     @Parameters public static Collection<Object[]> data() throws UnknownHostException,InterruptedException,ExecutionException {
-        Set<String> hosts=hosts();
+        Set<String> hosts=moreHosts();
         p("hosts: "+hosts);
         List<Object[]> parameters=new ArrayList<Object[]>();
         for(String string:hosts) {
@@ -169,7 +169,7 @@ import p.LogServer.Copier;
     SocketHandler socketHandler;
     Thread thread;
     Writer writer;
-    final Logger l=Logger.getLogger("testxyzzy");
+    final Logger l=Logger.getLogger(testLoggerName);
     final String expected="i am a duck.";
     static Integer staticService=7000;
 }

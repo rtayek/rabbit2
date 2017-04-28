@@ -32,7 +32,7 @@ import static p.IO.Acceptor.*;
         }
     }
     @Parameters public static Collection<Object[]> data() throws UnknownHostException,InterruptedException,ExecutionException {
-        Set<String> hosts=hosts();
+        Set<String> hosts=moreHosts();
         p("hosts: "+hosts);
         List<Object[]> parameters=new ArrayList<Object[]>();
         for(String string:hosts) {

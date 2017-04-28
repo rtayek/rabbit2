@@ -137,14 +137,14 @@ public class Controller {
         out.flush();
     }
     public static void main(String[] arguments) throws UnknownHostException,InterruptedException,ExecutionException {
-        Logger logger=Logger.getLogger("testxyzzy");
+        Logger logger=Logger.getLogger(testLoggerName);
         logger.setLevel(defaultLevel);
         InetAddress inetAddress=InetAddress.getLocalHost();
         int first=toUnsignedInt(inetAddress.getAddress()[3]);
         addFileHandler(logger,new File(logFileDirectory),""+inetAddress);
         logger.warning("added file handler");
         Group group=new Group(first,first,false);
-        Main main=new Main(defaultProperties,logger,group,Model.mark1);
+        Main main=new Main(defaultProperties,group,Model.mark1);
         new Controller(main).run();
     }
     protected final Main main;

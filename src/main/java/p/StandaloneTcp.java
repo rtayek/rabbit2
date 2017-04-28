@@ -1,7 +1,7 @@
 package p;
 import java.io.*;
 import java.net.*;
-public class Tcp {
+public class StandaloneTcp {
     public interface Consumer<T> { // instead of 1.8 definition
         void accept(T t);
     }
@@ -44,7 +44,7 @@ public class Tcp {
     public static void p(String string) {
         p(System.out,string);
     }
-    Tcp(String host,Integer service) throws IOException {
+    StandaloneTcp(String host,Integer service) throws IOException {
         ServerSocket serverSocket=new ServerSocket();
         SocketAddress socketAddress=new InetSocketAddress(host,service);
         serverSocket.bind(socketAddress);
@@ -83,7 +83,7 @@ public class Tcp {
         final String host="localhost";
         final Integer service=1237;
         try {
-            Tcp tcp=new Tcp(host,service);
+            StandaloneTcp tcp=new StandaloneTcp(host,service);
         } catch(Exception e) {
             p("main caught: "+e);
         }

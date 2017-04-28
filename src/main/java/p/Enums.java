@@ -1,4 +1,6 @@
 package p;
+import java.io.File;
+import java.util.Properties;
 import java.util.logging.Level;
 import static p.IO.*;
 import static p.Main.*;
@@ -25,12 +27,12 @@ public class Enums {
             else p(ordinal+" is invalid ordinal for!");
         }
         public static void doItem(LevelSubMenuItem levelSubMenuItem,Main main) {
-            main.l.setLevel(levelSubMenuItem.level);
+            l.setLevel(levelSubMenuItem.level);
         }
         private final Level level;
     }
     public enum MenuItem implements Item {
-        clearPrefs,toggleExtraStatus,ToggleLogging,Log,Sound,Quit,Level;
+        ResetPreferences,Statistics,ToggleLogging,Log,Sound,Quit,Level;
         @Override public void doItem(Main main) {
             doItem(this,main);
         }
@@ -48,9 +50,12 @@ public class Enums {
         public static void doItem(MenuItem tabletMenuItem,final Main main) {
             if(main==null) p("main is null in doItem: "+tabletMenuItem);
             switch(tabletMenuItem) {
-                case clearPrefs:
-                    // just a properties file now
-                    // should this restore to default?
+                case Statistics:
+                    main.printStats();
+                break;
+                case ResetPreferences:
+                    p("reset preferences to: "+defaultProperties+" "+Main.propertiesFilename);
+                    store(new File(Main.propertiesFilename),defaultProperties);
                     break;
                 case ToggleLogging:
                     //LoggingHandler.toggleSockethandlers();
@@ -58,11 +63,11 @@ public class Enums {
                 case Log:
                     // gui.textView.setVisible(!gui.textView.isVisible());
                     break;
-                //case Level: // handled by submenu 
-                //    break; // no, it's not
+                case Level: // handled by submenu 
+                    break; // no, it's not
                 case Sound:
                     Audio.Instance.sound=!Audio.Instance.sound;
-                    main.l.info("sound: "+Audio.Instance.sound);
+                    l.info("sound: "+Audio.Instance.sound);
                     break;
                 case Quit:
                     if(!isAndroid()) {

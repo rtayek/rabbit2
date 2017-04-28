@@ -6,14 +6,11 @@ import java.util.logging.*;
 import static p.IO.*;
 import p.IO.Acceptor;
 public class Main implements Runnable {
-    // make this work without knowing the ssid of the router
-    // use un-routable or specify prefix or take whatever?
-    // lets use our router for a while
-    public Main(Properties properties,Logger logger,Group group,Model model) {
-        this(properties,logger,group,model,null);
+    public Main(Properties properties,Group group,Model model) {
+        this(properties,group,model,null);
         if(group.sameInetAddress) throw new RuntimeException("use ctor with service!");
     }
-    public Main(Properties properties,Logger logger,Group group,Model model,Integer myService) {
+    public Main(Properties properties,Group group,Model model,Integer myService) {
         // group and model are required to construct.
         // router is required to construct.
         // ip address is not required to construct
@@ -22,8 +19,7 @@ public class Main implements Runnable {
         // and guard everything with a test for non null?
         router=properties.getProperty("router");
         logServerHost=properties.getProperty("logServerHost");
-        l=logger;
-        l.warning(this+" constructed at: "+new Date());
+        l.info(this+" constructed at: "+new Date());
         if(group.sameInetAddress!=(myService!=null)) throw new RuntimeException("use ctor with service!");
         this.group=group;
         this.model=model;
@@ -107,6 +103,9 @@ public class Main implements Runnable {
                 try {
                     socket.connect(inetSocketAddress,connectionTimeout);
                 } catch(Exception e) {
+                    try {
+                        socket.close();
+                    } catch(IOException e1) {}
                     //p("caught: "+e);
                     return false;
                 }
@@ -128,11 +127,12 @@ public class Main implements Runnable {
         private Tablet() {}
         boolean receive(String string,InetAddress inetAddress) {
             boolean rc=false;
-            if(!group.isInGroup(inetAddress)) l.warning("message from: "+inetAddress+" is not in group: "+string);
+            if(!group.isInGroup(inetAddress)) l.severe("message from: "+inetAddress+" is not in group: "+string);
             else if(string==null) ;
-            else if(string.isEmpty()) p("empty message from: "+inetAddress);
-            else if(string.length()!=model.buttons) p("bad message: "+string);
+            else if(string.isEmpty()) l.severe("empty message from: "+inetAddress);
+            else if(string.length()!=model.buttons) l.severe("bad message: "+string);
             else {
+                l.info("received: "+string+" from: "+inetAddress);
                 for(int i=0;i<string.length();i++) {
                     char c=string.charAt(i);
                     if(c=='T'||c=='F') {
@@ -145,8 +145,11 @@ public class Main implements Runnable {
                     }
                 }
                 rc=true;
-                if(group.isInGroup(inetAddress)) receives[lowOrderOctet(inetAddress)-group.first]++;
-                else p("address: "+inetAddress+" is out of range: "+group.first+':'+group.last);
+                if(group.isInGroup(inetAddress)) {
+                    p("incrementing receives: "+(lowOrderOctet(inetAddress)-group.first));
+                    receives[lowOrderOctet(inetAddress)-group.first]++;
+                }
+                else l.severe("address: "+inetAddress+" is out of range: "+group.first+':'+group.last);
             }
             return rc;
         }
@@ -194,7 +197,7 @@ public class Main implements Runnable {
             // how about the connections?
             // close them also?
         }
-        private void broadcast(final String string,Integer myService) {
+        private synchronized void broadcast(final String string,Integer myService) {
             broadcasts++;
             Set<InetSocketAddress> inetSocketAddresses=group.socketAddresses(myInetAddress);
             Iterator<InetSocketAddress> j=inetSocketAddresses.iterator();
@@ -261,16 +264,21 @@ public class Main implements Runnable {
             p("sleep caught: "+e);
         }
     }
-    void printStats() {
-        p("failures: "+Arrays.asList(sendFailures));
-        p("sends:    "+Arrays.asList(sends));
-        p("receives: "+Arrays.asList(receives));
+    public String statistics() {
+        String string="";
+        string+="failures: "+Arrays.asList(sendFailures)+'\n';
+        string+="sends:    "+Arrays.asList(sends)+'\n';
+        string+="receives: "+Arrays.asList(receives);
+        return string;
+    }
+    public void printStats() {
+        p(""+statistics());
     }
     @Override public void run() {
         p("router: "+router);
         l.info("enter run");
         while(true) {
-            l.info(myInetAddress+" "+instance().isListening());
+            l.info("loop: "+loops+" "+myInetAddress+" "+instance().isListening());
             try {
                 while(myInetAddress==null) { // may change when router cycles power
                     l.warning("we do not know our ip address!");
@@ -290,13 +298,19 @@ public class Main implements Runnable {
                     sleep(sleep);
                 }
                 if(instance().isListening) {
-                    if(socketHandler==null) {
-                        socketHandler=IO.socketHandler(logServerHost,LogServer.defaultLogServerService);
-                        if(socketHandler!=null) {
-                            l.addHandler(socketHandler);
-                            l.warning("added socket handler to: "+logServerHost);
-                        } else p("could not add socket handler to: "+logServerHost);
-                    }
+                    boolean ok=Exec.canWePing(logServerHost,1_000);
+                    if(ok) {
+                        p("we can ping the log server: "+logServerHost);
+                        if(socketHandler==null) {
+                            socketHandler=IO.socketHandler(logServerHost,LogServer.defaultLogServerService);
+                            if(socketHandler!=null) {
+                                l.addHandler(socketHandler);
+                                l.warning("added socket handler to: "+logServerHost);
+                            } else p("could not add socket handler to: "+logServerHost);
+                        } else {
+                            ; // socket handler is probably logging
+                        }
+                    } else p("can not ping log server: "+logServerHost);
                 } else {
                     l.warning("not listening.");
                     boolean ok=instance().startListening();
@@ -320,36 +334,42 @@ public class Main implements Runnable {
             } catch(Exception e) {
                 p(this+" caught: "+e);
             }
+            loops++;
+        }
+    }
+    public static void store(File file,Properties properties) {
+        try {
+            Writer writer=new FileWriter(file);
+            properties.store(writer,"initial");
+            writer.close();
+            p("created: "+properties);
+        } catch(IOException e) {
+            p("can not store: "+file);
         }
     }
     public static Properties properties(File file) {
         Properties properties=new Properties(defaultProperties);
-        if(!file.exists()) try {
-            Writer writer=new FileWriter(file);
-            defaultProperties.store(writer,"initial");
-            writer.close();
-            p("created: "+defaultProperties);
-        } catch(IOException e) {
-            p("can not store: "+file);
-        }
+        if(!file.exists()) store(file,defaultProperties);
         try {
             FileReader fileReader=new FileReader(file);
             properties.load(fileReader);
             p("loaded: "+properties);
+            fileReader.close();
         } catch(IOException e) {
             p("can not load: "+file);
+            p("using: "+properties);
         }
         return properties;
     }
     public static void main(String[] args) throws Exception {
-        p("default properties: "+defaultProperties);
+        // tests will put there log files in the same place?
+        addFileHandler(l,new File(logFileDirectory),"main");
+        p("local host: "+InetAddress.getLocalHost());
         Properties properties=properties(new File(propertiesFilename));
-        Logger logger=Logger.getLogger("xyzzy");
-        addFileHandler(logger,new File(logFileDirectory),"main");
-        int first=100,n=20;
-        Group group=new Group(first,first+n-1,false);
-        p("group: "+group);
-        new Main(properties,logger,group,Model.mark1).run();
+        Integer first=new Integer(properties.getProperty("first"));
+        Integer last=new Integer(properties.getProperty("last"));
+        Group group=new Group(first,last,false);
+        new Main(properties,group,Model.mark1).run();
     }
     public int sleep=10_000;
     public final String router,logServerHost;
@@ -358,15 +378,15 @@ public class Main implements Runnable {
     public final Integer[] sends,sendFailures,receives;
     public final Model model;
     private Tablet instance;
+    Integer loops=0;
     final Group group;
-    public final Logger l;
     SocketHandler socketHandler;
     public static Level defaultLevel=Level.WARNING;
-    public static final String propertiesFilename="tablet.properties";
+    public static String propertiesFilename="tablet.properties"; // may screw up testing
     public static final Properties defaultProperties=new Properties();
     static {
-        defaultProperties.setProperty("router","192.168.1.1");
-        defaultProperties.setProperty("logServerHost","192.168.1.108");
+        defaultProperties.setProperty("router","192.168.2.1");
+        defaultProperties.setProperty("logServerHost","192.168.2.118");
         defaultProperties.setProperty("first","100");
         defaultProperties.setProperty("last","131");
     }

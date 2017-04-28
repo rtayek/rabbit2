@@ -1,4 +1,5 @@
 package p;
+import static p.IO.loggerName;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
@@ -173,8 +174,7 @@ public class IO {
                         return true;
                     }
                 } catch(IOException e) {
-                    p("bind exception!");
-                    // e.printStackTrace();
+                    p("bind caught: "+e);
                 }
             }
             return false;
@@ -185,7 +185,7 @@ public class IO {
                 boolean ok=bind(serverSocket,socketAddress);
                 if(ok) return new Acceptor(serverSocket,socketConsumer);
             } catch(IOException e) {
-                e.printStackTrace();
+                p("acceptor() caught: "+e);
             }
             return null;
         }
@@ -264,7 +264,7 @@ public class IO {
         }
         return theBytes;
     }
-    static void filterNetworkInterface(NetworkInterface networkInterface,InterfaceAddress interfaceAddress,Consumer<InterfaceAddress> consumer) {
+    static void filterOutLoopbacks(NetworkInterface networkInterface,InterfaceAddress interfaceAddress,Consumer<InterfaceAddress> consumer) {
         //p("Name: "+networkInterface.getName());
         //p("networkInterface: "+networkInterface);
         try {
@@ -276,28 +276,28 @@ public class IO {
             p(networkInterface+" isLoopback() caught: "+e);
         } //p("loopback.");
     }
-    static void filterNetworkInterface(NetworkInterface networkInterface,Consumer<InterfaceAddress> consumer) {
+    static void filterOutInterfacesWithNoAddresses(NetworkInterface networkInterface,Consumer<InterfaceAddress> consumer) {
         Enumeration<InetAddress> inetAddresses=networkInterface.getInetAddresses();
         List<InterfaceAddress> interfaceAddresses=networkInterface.getInterfaceAddresses();
         if(interfaceAddresses.size()>0) {
             //p("display name: "+networkInterface.getDisplayName());
             for(InterfaceAddress interfaceAddress:interfaceAddresses)
-                filterNetworkInterface(networkInterface,interfaceAddress,consumer);
+                filterOutLoopbacks(networkInterface,interfaceAddress,consumer);
         } else;//p(networkInterface.getDisplayName()+" has no addresses.");
     }
     public static void filterNetworkInterfaces(Consumer<InterfaceAddress> consumer) {
         try {
             Enumeration<NetworkInterface> netowrkInterfaces=NetworkInterface.getNetworkInterfaces();
             for(NetworkInterface networkInterface:Collections.list(netowrkInterfaces))
-                filterNetworkInterface(networkInterface,consumer);
+                filterOutInterfacesWithNoAddresses(networkInterface,consumer);
         } catch(SocketException e) {
             p("getNetworkInterfaces() caught: "+e);
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
-    static Set<String> hosts() {
-        Set<String> hosts=new TreeSet<>();
+    static Set<String> moreHosts() {
+        Set<String> hosts=hosts();
         hosts.add("127.0.0.1");
         hosts.add("localhost");
         InetAddress inetAddress;
@@ -307,6 +307,10 @@ public class IO {
         } catch(UnknownHostException e) {
             p("get local host throws: "+e);
         }
+        return hosts;
+    }
+    static Set<String> hosts() {
+        Set<String> hosts=new TreeSet<>();
         Set<InterfaceAddress> interfaceAddresses=findMyInterfaceAddressesOnRouter(null);
         for(InterfaceAddress interfaceAddress:interfaceAddresses) {
             String host=interfaceAddress.getAddress().getHostAddress();
@@ -395,7 +399,7 @@ public class IO {
         }
     }
     public static void main(String args[]) {
-        Logger logger=Logger.getLogger("xyzzy");
+        Logger logger=Logger.getLogger(loggerName);
         addFileHandler(logger,new File(logFileDirectory),"IO");
         try {
             Enumeration<NetworkInterface> netowrkInterfaces=NetworkInterface.getNetworkInterfaces();
@@ -409,5 +413,7 @@ public class IO {
         }
     }
     public static String logFileDirectory="logFileDirectory";
-    static Integer testService=12345;
+    public static Integer testService=12345;
+    public static final String loggerName="xyzzy",testLoggerName="test xyzzy";
+    public static final Logger l=Logger.getLogger(loggerName);
 }

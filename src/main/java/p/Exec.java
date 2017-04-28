@@ -58,6 +58,7 @@ public class Exec {
     public static int exec(String[] strings) {
         Exec exec=new Exec(strings);
         exec.run();
+        //exec.print();
         return exec.rc;
     }
     public static int exec(String command) {
@@ -88,12 +89,14 @@ public class Exec {
             timeoutString+=timeout;
             Exec exec=new Exec(new String[] {"ping","-n","1","-w",""+timeoutString,host});
             exec.run();
+            //exec.print();
             boolean ok=false;
             //if(exec.output.contains("Reply from "+host+":")) // fragile! yes, very!
             if(exec.output.contains("Lost = 0")) // fragile! yes, very!
                 // fix this!
                 ok=true;
-            else p("output: "+exec.output);
+            else p("not ok,output: "+exec.output);
+            p("returning: "+ok);
             return ok;
         }
     }

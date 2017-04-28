@@ -38,17 +38,17 @@ public class LogServer implements Runnable {
             return new File(logServerlogDirectory,name(n));
         }
         File file() {
-            return new File(logServerlogDirectory,name(sequenceNumber));
+            return file(sequenceNumber);
         }
         private String name(int n) {
             InetAddress inetAddress=socket.getInetAddress();
-            String address=inetAddress.getHostAddress();
+            byte[] bytes=inetAddress.getAddress();
             long t=System.currentTimeMillis()-newMillenium;
             t/=1000;
             String name=prefix!=null&&!prefix.equals("")?(prefix+"."):"";
             name+=""+t+".";
-            name+=address+"."+socket.getLocalPort()+".";
-            name+=serverSocket.getInetAddress().getHostAddress()+".";
+            name+=bytes[2]+"."+bytes[3]+".";
+            bytes=serverSocket.getInetAddress().getAddress();
             name+=n;
             name+=".xml";
             return name;
@@ -68,7 +68,7 @@ public class LogServer implements Runnable {
     }
     public static class Copier extends Thread {
         public Copier(Socket socket,Writer out,boolean verbose) {
-            super(""+socket.getRemoteSocketAddress());
+            super("copier "+socket.getRemoteSocketAddress());
             this.socket=socket;
             this.out=out;
             this.verbose=verbose;
@@ -218,15 +218,18 @@ public class LogServer implements Runnable {
     }
     public static void print() {}
     public static void main(String args[]) {
-        String[] routers=args!=null&&args.length>0?args:new String[] {"192.168.1.1"};
+        // how to figure out what nic(s) to run this on.
+        String[] routers=args!=null&&args.length>0?args:new String[] {"192.168.0.1","192.168.1.1","192.168.2.1"};
         Set<LogServer> logServers=new LinkedHashSet<>();
-        for(String router:routers){
-                Set<InterfaceAddress> interfaceAddresses=IO.findMyInterfaceAddressesOnRouter(router);
+        for(String router:routers) {
+            Set<InterfaceAddress> interfaceAddresses=IO.findMyInterfaceAddressesOnRouter(router);
+            if(interfaceAddresses.size()>0) {
                 InetAddress inetAddress=interfaceAddresses.iterator().next().getAddress();
-                LogServer logServer=new LogServer(inetAddress.getHostName(),defaultLogServerService,null,null);
-                new Thread(logServer).start();
+                LogServer logServer=new LogServer(inetAddress.getHostAddress(),defaultLogServerService,null,null);
+                new Thread(logServer,"logServer").start();
                 logServers.add(logServer);
-            }
+            } else p("no interface addresses on: "+router);
+        }
         if(logServers.size()==0) {
             p("no log servers were created!");
             p("check the interfaces to see if they are up: "+logServers);

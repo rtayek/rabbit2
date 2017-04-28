@@ -9,7 +9,7 @@ public class IOTestCase {
     @After public void tearDown() throws Exception {}
     @Test public void test() {
         boolean fail=false;
-        for(String host:hosts()) {
+        for(String host:moreHosts()) {
             p("try: "+host);
             if(!Exec.canWePing(host,1_000)) {
                 fail=true;

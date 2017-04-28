@@ -36,7 +36,6 @@ public interface Audio {
         }
         @Override public void update(Observable observable,Object hint) {
             if(observable instanceof Model) if(this.model.equals(observable)) {
-                if(hint instanceof Sound) Audio.audio.play((Sound)hint);
                 if(model.areAnyButtonsOn()) startChimer();
                 else stopChimer();
             } else p("not our model!");
@@ -78,9 +77,10 @@ public interface Audio {
             }
             private static class WindowsAudio implements Audio {
                 WindowsAudio() {}
-                private static void play_(final Sound sound) {
-                    try {
+                @Override public void play(final Sound sound) {
+                    if(Audio.Instance.sound) try {
                         String filename=sound.name()+".wav";
+                        p("play: "+filename);
                         Clip clip=AudioSystem.getClip();
                         AudioInputStream inputStream=AudioSystem.getAudioInputStream(new BufferedInputStream(Audio.class.getResourceAsStream(filename)));
                         if(inputStream!=null) {
@@ -101,18 +101,6 @@ public interface Audio {
                         p("failed to play: "+sound);
                     }
                 }
-                @Override public void play(final Sound sound) {
-                    if(Audio.Instance.sound) if(runOnSeparateThread) {
-                        p("starting audio thread for: "+sound);
-                        Runnable runnable=new Runnable() {
-                            @Override public void run() {
-                                play_(sound);
-                            }
-                        };
-                        new Thread(runnable,"play: "+sound).start();
-                    } else play_(sound);
-                }
-                boolean runOnSeparateThread=true;
             }
         }
     }

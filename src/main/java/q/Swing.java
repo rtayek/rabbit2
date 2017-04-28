@@ -266,14 +266,13 @@ public class Swing extends MainGui implements Observer,ActionListener {
         return gui;
     }
     public static void main(String[] arguments) throws Exception {
-        Logger logger=Logger.getLogger("xyzzy");
+        Logger logger=Logger.getLogger(loggerName);
         int first=100,n=20;
         Group group=new Group(first,first+n-1,false);
-        Main main=new Main(defaultProperties,logger,group,Model.mark1.clone());
-        new Thread(main).start();
+        Main main=new Main(defaultProperties,group,Model.mark1.clone());
+        new Thread(main,"rabbit 2 main").start();
         Tablet tablet=main.instance();
         main.model.addObserver(create(main));
-        main.model.addObserver(new AudioObserver(main.model));
         tablet.startListening();
     }
     final Colors colors=new Colors();

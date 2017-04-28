@@ -17,7 +17,7 @@ public class LogServerOnLaptopTestCase {
         if(runTest) try {
             SocketHandler socketHandler=new SocketHandler(laptopToday,defaultLogServerService);
             socketHandler.setLevel(Level.ALL);
-            Logger l=Logger.getLogger("testxyzzy");
+            Logger l=Logger.getLogger(testLoggerName);
             l.addHandler(socketHandler);
             l.warning("foo");
         } catch(ConnectException e) {
