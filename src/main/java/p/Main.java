@@ -4,7 +4,16 @@ import java.net.*;
 import java.util.*;
 import java.util.logging.*;
 import static p.IO.*;
+import static p.IO.Connection.*;
 import p.IO.Acceptor;
+// we can connect and receive a message from the tcp server on the samsung.
+// nexus 5 receives from all, but sends to everything but the pc.
+// let's try moving to the laptop, maybe it's a firewall issue on win 8.
+// hassle, still problems pinging stuff on 192.168.2.0
+// we need the laptop plugged in to my router (or maybe just the routers connected).
+// so we can see the internet. so do that so hit can work.
+// then maybe plug the laptop into the tablet's router.
+
 public class Main implements Runnable {
     public Main(Properties properties,Group group,Model model) {
         this(properties,group,model,null);
@@ -88,28 +97,9 @@ public class Main implements Runnable {
             return socketAddresses;
         }
         private boolean send(String string,InetSocketAddress inetSocketAddress) {
-            Socket socket;
-            boolean old=false;
-            if(old) {
-                try {
-                    socket=new Socket(inetSocketAddress.getAddress(),inetSocketAddress.getPort());
-                } catch(IOException e) {
-                    //p("caught: "+e);
-                    return false;
-                }
-            } else {
-                Et et=new Et();
-                socket=new Socket();
-                try {
-                    socket.connect(inetSocketAddress,connectionTimeout);
-                } catch(Exception e) {
-                    try {
-                        socket.close();
-                    } catch(IOException e1) {}
-                    //p("caught: "+e);
-                    return false;
-                }
-            }
+            Socket socket=connect(inetSocketAddress,connectionTimeout);
+            if(socket==null)
+                return false;
             Connection connection=new Connection(socket,null,null,true);
             boolean ok=connection.send(string);
             connection.close();
@@ -119,13 +109,14 @@ public class Main implements Runnable {
             return "Group [first="+first+", last="+last+", other="+other+", other2="+other2+", serviceBase="+serviceBase+", sameInetAddress="+sameInetAddress+"]";
         }
         private final Integer first,last,other,other2;
-        public int connectionTimeout=300;
+        public int connectionTimeout=200;
         public final int serviceBase=10_000;
         final boolean sameInetAddress;
     }
     public class Tablet {
         private Tablet() {}
         boolean receive(String string,InetAddress inetAddress) {
+            // maybe pass socket or socket address in here?
             boolean rc=false;
             if(!group.isInGroup(inetAddress)) l.severe("message from: "+inetAddress+" is not in group: "+string);
             else if(string==null) ;
@@ -145,10 +136,7 @@ public class Main implements Runnable {
                     }
                 }
                 rc=true;
-                if(group.isInGroup(inetAddress)) {
-                    p("incrementing receives: "+(lowOrderOctet(inetAddress)-group.first));
-                    receives[lowOrderOctet(inetAddress)-group.first]++;
-                }
+                if(group.isInGroup(inetAddress)) receives[lowOrderOctet(inetAddress)-group.first]++;
                 else l.severe("address: "+inetAddress+" is out of range: "+group.first+':'+group.last);
             }
             return rc;
@@ -308,7 +296,7 @@ public class Main implements Runnable {
                                 l.warning("added socket handler to: "+logServerHost);
                             } else p("could not add socket handler to: "+logServerHost);
                         } else {
-                            ; // socket handler is probably logging
+                            p("socket handler is probably logging");
                         }
                     } else p("can not ping log server: "+logServerHost);
                 } else {
@@ -335,6 +323,8 @@ public class Main implements Runnable {
                 p(this+" caught: "+e);
             }
             loops++;
+            if(loops>10) sleep=mediumSleep;
+            else if(loops>100) sleep=longSleep;
         }
     }
     public static void store(File file,Properties properties) {
@@ -355,6 +345,11 @@ public class Main implements Runnable {
             properties.load(fileReader);
             p("loaded: "+properties);
             fileReader.close();
+            String ignore=properties.getProperty("ignore");
+            if(ignore.equals("true")) { // so we do not have to edit this file on the tablet
+                p("ingoring properties file, using defaults: "+defaultProperties);
+                properties=defaultProperties;
+            }
         } catch(IOException e) {
             p("can not load: "+file);
             p("using: "+properties);
@@ -371,7 +366,7 @@ public class Main implements Runnable {
         Group group=new Group(first,last,false);
         new Main(properties,group,Model.mark1).run();
     }
-    public int sleep=10_000;
+    public int sleep=shortSleep;
     public final String router,logServerHost;
     public final Integer myService; // just for testing
     public volatile InetAddress myInetAddress;
@@ -385,9 +380,11 @@ public class Main implements Runnable {
     public static String propertiesFilename="tablet.properties"; // may screw up testing
     public static final Properties defaultProperties=new Properties();
     static {
+        defaultProperties.setProperty("ignore","true");
         defaultProperties.setProperty("router","192.168.2.1");
-        defaultProperties.setProperty("logServerHost","192.168.2.118");
+        defaultProperties.setProperty("logServerHost","192.168.2.129");
         defaultProperties.setProperty("first","100");
         defaultProperties.setProperty("last","131");
     }
+    public static final Integer shortSleep=1_000,mediumSleep=10_000,longSleep=100_000;
 }

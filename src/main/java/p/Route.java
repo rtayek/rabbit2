@@ -110,10 +110,11 @@ public class Route {
         Route route=new Route();
         route.run();
         route.print();
-        route.delete();
+        p("relevant");
         List<R> relevant=route.relevant();
         for(R r:relevant)
             p(r.toString());
+        route.delete();
     }
     boolean seenInterfaceList,seenDelimiter,seenNetworkDestination,seenNetworkAddress;
     final String prefix="192.168";

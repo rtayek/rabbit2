@@ -1,10 +1,11 @@
 package p;
-import static p.IO.loggerName;
+import static p.IO.*;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
 import java.util.*;
 import java.util.logging.*;
+import p.IO.*;
 public class IO {
     public interface Consumer<T> { // instead of 1.8 definition
         void accept(T t);
@@ -35,7 +36,7 @@ public class IO {
     }
     static class Connection extends Thread {
         Connection(Socket socket,Consumer<String> consumer,Consumer<Exception> exceptionConsumer,boolean outGoing) {
-            this.socket=socket;
+            this.socket=socket; // connected socket
             this.stringConsumer=consumer;
             this.exceptionConsumer=exceptionConsumer;
             setName("connection #"+serialNumber+(outGoing?" to: ":" from: ")+socket);
@@ -107,6 +108,37 @@ public class IO {
                 }
             }
         }
+        public static Socket connect(InetSocketAddress inetSocketAddress,int timeout) {
+            Socket socket=new Socket();
+            try {
+                socket.connect(inetSocketAddress,timeout);
+            } catch(Exception e) {
+                //p("connect to: "+inetSocketAddress+" caught: "+e);
+                try {
+                    socket.close();
+                } catch(IOException e1) {
+                    p("caught: "+e1);
+                }
+                socket=null;
+            }
+            return socket;
+        }
+        public static void main(String args[]) throws InterruptedException {
+            InetSocketAddress inetSocketAddress=new InetSocketAddress("192.168.2.121",8080);
+            Socket socket=connect(inetSocketAddress,5_000);
+            if(socket!=null) {
+                p("connected");
+                Connection connection=new Connection(socket,new Consumer<String>() {
+                    @Override public void accept(final String string) {
+                        p("received: "+string);
+                    }
+                },null,true);
+                connection.start();
+                Thread.sleep(10_000);
+                //boolean ok=connection.send("foo");
+                //connection.close();
+            } else p("socket is null!");
+        }
         final Consumer<String> stringConsumer;
         final Consumer<Exception> exceptionConsumer;
         final Socket socket;
@@ -128,6 +160,7 @@ public class IO {
             while(!done)
                 try {
                     Socket socket=serverSocket.accept();
+                    p("accepted connection from: "+socket);
                     // should check socket's address in group's range for
                     // security
                     if(consumer!=null) consumer.accept(socket);

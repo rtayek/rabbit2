@@ -96,7 +96,7 @@ public class Exec {
                 // fix this!
                 ok=true;
             else p("not ok,output: "+exec.output);
-            p("returning: "+ok);
+            //p("returning: "+ok);
             return ok;
         }
     }
