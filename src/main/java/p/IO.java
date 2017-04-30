@@ -123,8 +123,10 @@ public class IO {
             }
             return socket;
         }
-        public static void main(String args[]) throws InterruptedException {
-            InetSocketAddress inetSocketAddress=new InetSocketAddress("192.168.2.121",8080);
+        public static void main(String arguments[]) throws InterruptedException {
+            String host=arguments!=null&&arguments.length>0?arguments[0]:"192.168.2.127";
+            InetSocketAddress inetSocketAddress=new InetSocketAddress(host,8080);
+            p("socket address: "+inetSocketAddress);
             Socket socket=connect(inetSocketAddress,5_000);
             if(socket!=null) {
                 p("connected");

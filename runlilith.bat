@@ -1,0 +1,1 @@
+java -jar D:/dev/lilith-8.1.1/lib/lilith.jar

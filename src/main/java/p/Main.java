@@ -6,13 +6,9 @@ import java.util.logging.*;
 import static p.IO.*;
 import static p.IO.Connection.*;
 import p.IO.Acceptor;
-// we can connect and receive a message from the tcp server on the samsung.
-// nexus 5 receives from all, but sends to everything but the pc.
-// let's try moving to the laptop, maybe it's a firewall issue on win 8.
-// hassle, still problems pinging stuff on 192.168.2.0
-// we need the laptop plugged in to my router (or maybe just the routers connected).
-// so we can see the internet. so do that so hit can work.
-// then maybe plug the laptop into the tablet's router.
+//git fetch origin
+//git reset --hard origin/master
+// make sure the firewalls are off in windows!
 
 public class Main implements Runnable {
     public Main(Properties properties,Group group,Model model) {
@@ -382,7 +378,7 @@ public class Main implements Runnable {
     static {
         defaultProperties.setProperty("ignore","true");
         defaultProperties.setProperty("router","192.168.2.1");
-        defaultProperties.setProperty("logServerHost","192.168.2.129");
+        defaultProperties.setProperty("logServerHost","192.168.2.127");
         defaultProperties.setProperty("first","100");
         defaultProperties.setProperty("last","131");
     }

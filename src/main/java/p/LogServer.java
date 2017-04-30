@@ -232,7 +232,7 @@ public class LogServer implements Runnable {
         }
         if(logServers.size()==0) {
             p("no log servers were created!");
-            p("check the interfaces to see if they are up: "+logServers);
+            p("check the interfaces to see if they are up: "+routers);
         }
     }
     public static final File logServerlogDirectory=new File("logServerlogDirectory");
