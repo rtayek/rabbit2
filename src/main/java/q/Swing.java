@@ -2,6 +2,7 @@ package q;
 import static java.lang.Math.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import java.net.*;
 import java.util.*;
 import java.util.logging.*;
@@ -266,10 +267,13 @@ public class Swing extends MainGui implements Observer,ActionListener {
         return gui;
     }
     public static void main(String[] arguments) throws Exception {
-        Logger logger=Logger.getLogger(loggerName);
-        int first=100,n=20;
-        Group group=new Group(first,first+n-1,false);
-        Main main=new Main(defaultProperties,group,Model.mark1.clone());
+        addFileHandler(l,new File(logFileDirectory),"main");
+        p("local host: "+InetAddress.getLocalHost());
+        Properties properties=properties(new File(propertiesFilename));
+        Integer first=new Integer(properties.getProperty("first"));
+        Integer last=new Integer(properties.getProperty("last"));
+        Group group=new Group(first,last,false);
+        Main main=new Main(properties,group,Model.mark1.clone());
         new Thread(main,"rabbit 2 main").start();
         Tablet tablet=main.instance();
         main.model.addObserver(create(main));
@@ -291,6 +295,5 @@ public class Swing extends MainGui implements Observer,ActionListener {
         }
     };
     final Main main;
-    public final Logger l=Logger.getLogger(getClass().getName());
     private static final long serialVersionUID=1L;
 }
