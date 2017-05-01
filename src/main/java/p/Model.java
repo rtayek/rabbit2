@@ -41,14 +41,14 @@ public class Model extends Observable implements Cloneable {
             states[id-1]=state;
             if(old!=state) setChangedAndNotify(id);
         }
-        else p("out of bounds in set state: "+id);
+        else l.severe("out of bounds in set state: "+id);
     }
     public Boolean state(Integer id) {
         if(1<=id&&id<=buttons) synchronized(states) {
             return states[id-1];
         }
         else {
-            p("out of bounds in get state: "+id);
+            l.severe("out of bounds in get state: "+id);
             return null;
         }
     }

@@ -192,10 +192,10 @@ public class Main implements Runnable {
                     @Override public void run() {
                         Et et=new Et();
                         boolean ok=group.send(string,inetSocketAddress);
-                        if(ok) p("send #"+broadcasts+" to: "+inetSocketAddress+" took: "+et);
+                        if(ok) l.info("send #"+broadcasts+" to: "+inetSocketAddress+" took: "+et);
                         else {
                             sendFailures[k]++;
-                            p("send #"+broadcasts+" to: "+inetSocketAddress+" failed after: "+et);
+                            l.info("send #"+broadcasts+" to: "+inetSocketAddress+" failed after: "+et);
                         }
                         // if we use some random set of addresses instead of a range
                         // then we will need to keep the stats in maps.
@@ -274,7 +274,7 @@ public class Main implements Runnable {
                     }
                     else myInetAddress=group.findMyInetAddress(router);
                     if(myInetAddress!=null) l.warning("found my ip address: "+myInetAddress);
-                    sleep(sleep);
+                    else sleep(sleep);
                 }
                 while(!isRouterOk()) { // maybe this should be first?
                     l.warning("router is not up!");
@@ -284,21 +284,21 @@ public class Main implements Runnable {
                 if(instance().isListening) {
                     boolean ok=Exec.canWePing(logServerHost,1_000);
                     if(ok) {
-                        p("we can ping the log server: "+logServerHost);
+                        l.info("we can ping the log server: "+logServerHost);
                         if(socketHandler==null) {
                             socketHandler=IO.socketHandler(logServerHost,LogServer.defaultLogServerService);
                             if(socketHandler!=null) {
                                 l.addHandler(socketHandler);
-                                l.warning("added socket handler to: "+logServerHost);
-                            } else p("could not add socket handler to: "+logServerHost);
+                                l.info("added socket handler to: "+logServerHost);
+                            } else l.info("could not add socket handler to: "+logServerHost);
                         } else {
-                            p("socket handler is probably logging");
+                            l.info("socket handler is probably logging");
                         }
-                    } else p("can not ping log server: "+logServerHost);
+                    } else l.warning("can not ping log server: "+logServerHost);
                 } else {
                     l.warning("not listening.");
                     boolean ok=instance().startListening();
-                    if(ok) l.warning("start listening on: "+instance().acceptor.toString());
+                    if(ok) l.info("start listening on: "+instance().acceptor.toString());
                     else l.warning("can not start listening");
                 }
                 if(!isRouterOk()) {
@@ -308,12 +308,15 @@ public class Main implements Runnable {
                         socketHandler=null;
                     }
                     if(instance().isListening) {
-                        p("something is not working, stopping listening.");
+                        l.warning("something is not working, stopping listening.");
                         instance().stopListening();
                     }
                 }
-                printStats();
+                l.info("\n"+statistics());
+                //printStats();
+                p("-----");
                 printThreads();
+                p("-----");
                 sleep(sleep);
             } catch(Exception e) {
                 p(this+" caught: "+e);

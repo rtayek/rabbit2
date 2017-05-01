@@ -24,7 +24,7 @@ public class Colors {
     }
     public static int color(double rate) {
         if(!(0<=rate&&rate<=1)) {
-            p("bad rate: "+rate);
+            l.warning("bad rate: "+rate);
             return 0;
         }
         int color=0;
@@ -44,7 +44,7 @@ public class Colors {
     }
     public static int color2(double rate) {
         if(!(0<=rate&&rate<=1)) {
-            p("bad rate: "+rate);
+            l.warning("bad rate: "+rate);
             return 0;
         }
         int red=(int)(255*rate);
@@ -58,7 +58,7 @@ public class Colors {
     public final int rows=2,columns=5,n=rows*columns+1;
     public final int background=0xd0d0e0;
     public final Integer[] on=new Integer[columns],off=new Integer[columns];
-    public final Integer whiteOn=0xffffff,whiteOff=0xe0e0e0;
+    public final Integer whiteOn=0xffffff,whiteOff=0xa0a0a0;
     public final Integer resetOn=0xffff80,resetOff=0x80ffff;
     {
         on[0]=red;

@@ -220,7 +220,7 @@ public class IO {
                 boolean ok=bind(serverSocket,socketAddress);
                 if(ok) return new Acceptor(serverSocket,socketConsumer);
             } catch(IOException e) {
-                p("acceptor() caught: "+e);
+                l.warning("acceptor() caught: "+e);
             }
             return null;
         }
@@ -308,7 +308,7 @@ public class IO {
                 consumer.accept(interfaceAddress);
             } else;
         } catch(SocketException e) {
-            p(networkInterface+" isLoopback() caught: "+e);
+            l.warning(networkInterface+" isLoopback() caught: "+e);
         } //p("loopback.");
     }
     static void filterOutInterfacesWithNoAddresses(NetworkInterface networkInterface,Consumer<InterfaceAddress> consumer) {
@@ -326,8 +326,7 @@ public class IO {
             for(NetworkInterface networkInterface:Collections.list(netowrkInterfaces))
                 filterOutInterfacesWithNoAddresses(networkInterface,consumer);
         } catch(SocketException e) {
-            p("getNetworkInterfaces() caught: "+e);
-            // TODO Auto-generated catch block
+            l.warning("getNetworkInterfaces() caught: "+e);
             e.printStackTrace();
         }
     }
@@ -340,7 +339,7 @@ public class IO {
             inetAddress=InetAddress.getLocalHost();
             hosts.add(inetAddress.getHostAddress());
         } catch(UnknownHostException e) {
-            p("get local host throws: "+e);
+            l.warning("get local host throws: "+e);
         }
         return hosts;
     }
@@ -401,7 +400,7 @@ public class IO {
             InetAddress interfaceInetAddress=interfaceAddress.getAddress();
             return isOnRouter(router,n,interfaceInetAddress);
         } catch(UnknownHostException e) {
-            p("isOnRouter caught: "+e);
+            l.warning("isOnRouter caught: "+e);
         }
         return false;
     }
@@ -418,8 +417,8 @@ public class IO {
     }
     public static void addFileHandler(Logger logger,File logFileDirectory,String prefix) {
         if(!logFileDirectory.exists()) {
-            if(logFileDirectory.mkdir()) p("created: "+logFileDirectory);
-            else p("can not create: "+logFileDirectory);
+            if(logFileDirectory.mkdir()) l.info("created: "+logFileDirectory);
+            else l.warning("can not create: "+logFileDirectory);
         }
         try {
             String pattern=prefix+".%u.%g.log";
@@ -434,8 +433,7 @@ public class IO {
         }
     }
     public static void main(String args[]) {
-        Logger logger=Logger.getLogger(loggerName);
-        addFileHandler(logger,new File(logFileDirectory),"IO");
+        addFileHandler(l,new File(logFileDirectory),"IO");
         try {
             Enumeration<NetworkInterface> netowrkInterfaces=NetworkInterface.getNetworkInterfaces();
             for(NetworkInterface networkInterface:Collections.list(netowrkInterfaces))

@@ -41,7 +41,6 @@ enum Where {
         Boolean[] b=new Boolean[values().length];
         for(int i=0;i<values().length;i++)
             b[i]=string.charAt(i)=='1';
-        p(Arrays.asList(b).toString());
         return b;
     }
     public static EnumSet<Where> set(Boolean[] bits) {

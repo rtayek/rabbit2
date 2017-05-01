@@ -38,8 +38,8 @@ public interface Audio {
             if(observable instanceof Model) if(this.model.equals(observable)) {
                 if(model.areAnyButtonsOn()) startChimer();
                 else stopChimer();
-            } else p("not our model!");
-            else p("not a model!");
+            } else l.severe("not our model!");
+            else l.severe("not a model!");
         }
         private final Model model;
         volatile Timer timer;
@@ -68,7 +68,7 @@ public interface Audio {
                 AndroidAudio() {}
                 @Override public void play(Sound sound) {
                     if(Audio.Instance.sound) if(consumer!=null) consumer.accept(sound);
-                    else p("callback is not set: "+sound);
+                    else l.severe("callback is not set: "+sound);
                 }
                 public void setCallback(Consumer<Sound> consumer) {
                     this.consumer=consumer;
@@ -80,7 +80,7 @@ public interface Audio {
                 @Override public void play(final Sound sound) {
                     if(Audio.Instance.sound) try {
                         String filename=sound.name()+".wav";
-                        p("play: "+filename);
+                        l.info("play: "+filename);
                         Clip clip=AudioSystem.getClip();
                         AudioInputStream inputStream=AudioSystem.getAudioInputStream(new BufferedInputStream(Audio.class.getResourceAsStream(filename)));
                         if(inputStream!=null) {
@@ -94,11 +94,11 @@ public interface Audio {
                             // or at least don't wait here?
                             //Thread.sleep(500);
                             clip.close();
-                        } else p("input stream is null!");
+                        } else l.warning("input stream is null!");
                     } catch(Exception e) {
                         e.printStackTrace();
-                        p("caught: "+e);
-                        p("failed to play: "+sound);
+                        l.severe("caught: "+e);
+                        l.severe("failed to play: "+sound);
                     }
                 }
             }

@@ -24,7 +24,7 @@ public class Enums {
         }
         public static void doItem(int ordinal) { // used by android
             if(0<=ordinal&&ordinal<values().length) values()[ordinal].doItem((Main)null);
-            else p(ordinal+" is invalid ordinal for!");
+            else l.severe(ordinal+" is invalid ordinal for!");
         }
         public static void doItem(LevelSubMenuItem levelSubMenuItem,Main main) {
             l.setLevel(levelSubMenuItem.level);
@@ -44,17 +44,17 @@ public class Enums {
         }
         public static void doItem(int ordinal,Main main) { // used by android
             if(main!=null) if(0<=ordinal&&ordinal<values().length) values()[ordinal].doItem(main);
-            else p(ordinal+" is invalid ordinal for menu item!");
-            else p("main is null in do item!");
+            else l.severe(ordinal+" is invalid ordinal for menu item!");
+            else l.severe("main is null in do item!");
         }
         public static void doItem(MenuItem tabletMenuItem,final Main main) {
-            if(main==null) p("main is null in doItem: "+tabletMenuItem);
+            if(main==null) l.severe("main is null in doItem: "+tabletMenuItem);
             switch(tabletMenuItem) {
                 case Statistics:
                     main.printStats();
                 break;
                 case ResetPreferences:
-                    p("reset preferences to: "+defaultProperties+" "+Main.propertiesFilename);
+                    l.info("reset preferences to: "+defaultProperties+" "+Main.propertiesFilename);
                     store(new File(Main.propertiesFilename),defaultProperties);
                     break;
                 case ToggleLogging:
@@ -76,7 +76,7 @@ public class Enums {
                     }
                     break;
                 default:
-                    p(tabletMenuItem+" was not handled!");
+                    l.warning(tabletMenuItem+" was not handled!");
             }
         }
     }
