@@ -9,7 +9,6 @@ import p.IO.Acceptor;
 //git fetch origin
 //git reset --hard origin/master
 // make sure the firewalls are off in windows!
-
 public class Main implements Runnable {
     public Main(Properties properties,Group group,Model model) {
         this(properties,group,model,null);
@@ -94,8 +93,7 @@ public class Main implements Runnable {
         }
         private boolean send(String string,InetSocketAddress inetSocketAddress) {
             Socket socket=connect(inetSocketAddress,connectionTimeout);
-            if(socket==null)
-                return false;
+            if(socket==null) return false;
             Connection connection=new Connection(socket,null,null,true);
             boolean ok=connection.send(string);
             connection.close();
@@ -319,11 +317,11 @@ public class Main implements Runnable {
                 p("-----");
                 sleep(sleep);
             } catch(Exception e) {
-                p(this+" caught: "+e);
+                l.severe(this+" caught: "+e);
             }
             loops++;
-            if(loops>10) sleep=mediumSleep;
-            else if(loops>100) sleep=longSleep;
+            if(loops>100) sleep=longSleep;
+            else if(loops>10) sleep=mediumSleep;
         }
     }
     public static void store(File file,Properties properties) {
@@ -359,6 +357,15 @@ public class Main implements Runnable {
         // tests will put there log files in the same place?
         addFileHandler(l,new File(logFileDirectory),"main");
         p("local host: "+InetAddress.getLocalHost());
+        if(true) {
+            String host="localhost";
+            SocketHandler socketHandler=IO.socketHandler(host,50505);
+            if(socketHandler!=null) {
+                socketHandler.setLevel(Level.ALL);
+                l.addHandler(socketHandler);
+                l.info("added socket handler to: "+host);
+            } else l.info("could not add socket handler to: "+host);
+        }
         Properties properties=properties(new File(propertiesFilename));
         Integer first=new Integer(properties.getProperty("first"));
         Integer last=new Integer(properties.getProperty("last"));
