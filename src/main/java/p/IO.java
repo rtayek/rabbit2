@@ -124,6 +124,7 @@ public class IO {
             return socket;
         }
         public static void main(String arguments[]) throws InterruptedException {
+            p("hosts: "+hosts());
             String host=arguments!=null&&arguments.length>0?arguments[0]:"192.168.2.127";
             InetSocketAddress inetSocketAddress=new InetSocketAddress(host,8080);
             p("socket address: "+inetSocketAddress);

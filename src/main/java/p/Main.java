@@ -9,6 +9,7 @@ import p.IO.Acceptor;
 //git fetch origin
 //git reset --hard origin/master
 // make sure the firewalls are off in windows!
+//adb shell "ip route show"
 public class Main implements Runnable {
     public Main(Properties properties,Group group,Model model) {
         this(properties,group,model,null);
@@ -353,11 +354,43 @@ public class Main implements Runnable {
         }
         return properties;
     }
+    public static void logging() {
+        p("logger name: "+l.getName()+" is at level: "+l.getLevel());
+        p("parent: "+l.getParent());
+        Logger parent=l.getParent();
+        if(parent.getHandlers().length>0) for(java.util.logging.Handler handler:parent.getHandlers())
+            p("parent handler: "+handler+": "+handler.getLevel());
+        else p("parent no handlers!");
+        if(l.getHandlers().length>0) for(java.util.logging.Handler handler:l.getHandlers()) {
+            p(handler+": "+handler.getLevel());
+        }
+        else {
+            p("no handlers");
+            if(!isAndroid()) {
+                l.setUseParentHandlers(false);
+                p("set use parent handlers to false.");
+                java.util.logging.Handler handler=new ConsoleHandler();
+                handler.setLevel(Level.ALL);
+                l.addHandler(handler);
+                p("added console handler.");
+            } else p("using parent handlers.");
+        }
+    }
     public static void main(String[] args) throws Exception {
-        // tests will put there log files in the same place?
+        // tests will put their log files in the same place?
+        // we can make this find the router?
+        // yes, we could iterate through interfaces, but they may not be up.
+        // we could see what we can ping, but they may not be up.
+        // so worst case, we need to know the router.
+        // and we can probably get by trying 192.168.0.1 or 192.168.1.1. 
+        // we need to know log server's address which is not static
+        // so after a download or an install, we must edit the properties file
+        // and enter the address of the log server if there is one,
+        logging();
+        l.setLevel(Level.ALL);
         addFileHandler(l,new File(logFileDirectory),"main");
         p("local host: "+InetAddress.getLocalHost());
-        if(true) {
+        if(true) { // seems like we can always add this!
             String host="localhost";
             SocketHandler socketHandler=IO.socketHandler(host,50505);
             if(socketHandler!=null) {
@@ -370,6 +403,19 @@ public class Main implements Runnable {
         Integer first=new Integer(properties.getProperty("first"));
         Integer last=new Integer(properties.getProperty("last"));
         Group group=new Group(first,last,false);
+        String router=properties.getProperty("router");
+        l.finest("finest");
+        p("router: "+router);
+        while(router==null||router.equals("")) {
+            Set<InetAddress> routersWeCanPing=Exec.routersWeCanPing();
+            if(routersWeCanPing.size()>0) {
+                l.config("we can ping: "+routersWeCanPing);
+                router=routersWeCanPing.iterator().next().getHostAddress();
+                l.config("using router: "+router);
+                properties.setProperty("router",router);
+                break;
+            } else l.warning("no routers we can ping!");
+        }
         new Main(properties,group,Model.mark1).run();
     }
     public int sleep=shortSleep;

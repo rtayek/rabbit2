@@ -1,3 +1,9 @@
+//https://www.petrikainulainen.net/programming/gradle/getting-started-with-gradle-integration-testing/
+//http://buransky.com/programming/integration-testing-with-gradle/
+//https://dzone.com/articles/integration-testing-with-gradle
+//https://www.michael-bull.com/blog/2016/06/04/separating-integration-and-unit-tests-with-gradle
+//http://stackoverflow.com/questions/16741004/adding-an-additional-test-suite-to-gradle
+//http://stuartingram.com/2016/09/15/separating-unit-from-integration-tests-in-java-using-gradle/
 apply plugin: 'java'
 repositories {
     jcenter()

@@ -3,6 +3,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.*;
 import static java.lang.Math.*;
 import java.util.*;
 import static p.IO.p;
@@ -92,13 +93,23 @@ public class Exec {
             //exec.print();
             boolean ok=false;
             //if(exec.output.contains("Reply from "+host+":")) // fragile! yes, very!
-            if(exec.output.contains("Lost = 0")) // fragile! yes, very!
+            if(!exec.output.contains("TTL expired in transit")&&exec.output.contains("Lost = 0")) // fragile! yes, very!
                 // fix this!
                 ok=true;
-            else p("not ok,output: "+exec.output);
+            else ;//p("not ok,output: "+exec.output);
             //p("returning: "+ok);
             return ok;
         }
+    }
+    public static Set<InetAddress> routersWeCanPing() {
+        Set<InetAddress> routers=new LinkedHashSet<>();
+        for(int i=0;i<5;i++) {
+            String host="192.168."+i+".1";
+            if(canWePing(host,1000)) try {
+                routers.add(InetAddress.getByName(host));
+            } catch(UnknownHostException e) {}
+        }
+        return routers;
     }
     public static void main(String[] args) throws InterruptedException,IOException {
         p("------");
@@ -111,6 +122,7 @@ public class Exec {
         Exec.ping("localhost");
         p("------");
         new Exec(new String[] {"ping","localhost"}).run().print();
+        p("routers: "+routersWeCanPing());
     }
     final ProcessBuilder processBuilder;
     int rc;

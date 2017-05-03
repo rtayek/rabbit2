@@ -218,10 +218,16 @@ public class LogServer implements Runnable {
     }
     public static void print() {}
     public static void main(String args[]) {
-        // how to figure out what nic(s) to run this on.
-        String[] routers=args!=null&&args.length>0?args:new String[] {"192.168.0.1","192.168.1.1","192.168.2.1"};
         Set<LogServer> logServers=new LinkedHashSet<>();
-        for(String router:routers) {
+        // how to figure out what nic(s) to run this on.
+        // iterating over the nics is fine, but the tablets will need to know the ipaddress on startup
+        // or the address needs to be entered into the properties file (maybe with ignore=false
+        // and the app needs to be restarted.
+        // or we could require a static ip address ... 
+        // let's not do that (require a static ip address). 
+        
+        for(int i=0;i<=5;i++) {
+        String router="192.168."+i+".1";
             Set<InterfaceAddress> interfaceAddresses=IO.findMyInterfaceAddressesOnRouter(router);
             if(interfaceAddresses.size()>0) {
                 InetAddress inetAddress=interfaceAddresses.iterator().next().getAddress();
@@ -232,7 +238,7 @@ public class LogServer implements Runnable {
         }
         if(logServers.size()==0) {
             p("no log servers were created!");
-            p("check the interfaces to see if they are up: "+routers);
+            p("check the interfaces to see if they are up.");
         }
     }
     public static final File logServerlogDirectory=new File("logServerlogDirectory");
