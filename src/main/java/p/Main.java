@@ -354,22 +354,31 @@ public class Main implements Runnable {
         }
         return properties;
     }
-    public static void logging() {
+    public static Set<InetAddress> routersWeCanPing() {
+        Set<InetAddress> routers=new LinkedHashSet<>();
+        for(int i=0;i<5;i++) {
+            String host="192.168."+i+".1";
+            if(Exec.canWePing(host,1000)) try {
+                routers.add(InetAddress.getByName(host));
+            } catch(UnknownHostException e) {}
+        }
+        return routers;
+    }   public static void logging() {
         p("logger name: "+l.getName()+" is at level: "+l.getLevel());
         p("parent: "+l.getParent());
         Logger parent=l.getParent();
-        if(parent.getHandlers().length>0) for(java.util.logging.Handler handler:parent.getHandlers())
+        if(parent.getHandlers().length>0) for(Handler handler:parent.getHandlers())
             p("parent handler: "+handler+": "+handler.getLevel());
-        else p("parent no handlers!");
-        if(l.getHandlers().length>0) for(java.util.logging.Handler handler:l.getHandlers()) {
+        else p("parent has no handlers!");
+        if(l.getHandlers().length>0) for(Handler handler:l.getHandlers()) {
             p(handler+": "+handler.getLevel());
         }
         else {
-            p("no handlers");
+            p("logger has no handlers");
             if(!isAndroid()) {
                 l.setUseParentHandlers(false);
                 p("set use parent handlers to false.");
-                java.util.logging.Handler handler=new ConsoleHandler();
+                Handler handler=new ConsoleHandler();
                 handler.setLevel(Level.ALL);
                 l.addHandler(handler);
                 p("added console handler.");
@@ -387,6 +396,7 @@ public class Main implements Runnable {
         // so after a download or an install, we must edit the properties file
         // and enter the address of the log server if there is one,
         logging();
+        p("rounters we can ping: "+routersWeCanPing());
         l.setLevel(Level.ALL);
         addFileHandler(l,new File(logFileDirectory),"main");
         p("local host: "+InetAddress.getLocalHost());
@@ -407,7 +417,7 @@ public class Main implements Runnable {
         l.finest("finest");
         p("router: "+router);
         while(router==null||router.equals("")) {
-            Set<InetAddress> routersWeCanPing=Exec.routersWeCanPing();
+            Set<InetAddress> routersWeCanPing=routersWeCanPing();
             if(routersWeCanPing.size()>0) {
                 l.config("we can ping: "+routersWeCanPing);
                 router=routersWeCanPing.iterator().next().getHostAddress();

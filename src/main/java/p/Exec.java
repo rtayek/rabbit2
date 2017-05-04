@@ -101,16 +101,7 @@ public class Exec {
             return ok;
         }
     }
-    public static Set<InetAddress> routersWeCanPing() {
-        Set<InetAddress> routers=new LinkedHashSet<>();
-        for(int i=0;i<5;i++) {
-            String host="192.168."+i+".1";
-            if(canWePing(host,1000)) try {
-                routers.add(InetAddress.getByName(host));
-            } catch(UnknownHostException e) {}
-        }
-        return routers;
-    }
+
     public static void main(String[] args) throws InterruptedException,IOException {
         p("------");
         Exec exec=new Exec(new String[] {"ping","localhost"});
@@ -122,7 +113,6 @@ public class Exec {
         Exec.ping("localhost");
         p("------");
         new Exec(new String[] {"ping","localhost"}).run().print();
-        p("routers: "+routersWeCanPing());
     }
     final ProcessBuilder processBuilder;
     int rc;
