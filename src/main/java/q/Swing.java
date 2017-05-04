@@ -266,6 +266,9 @@ public class Swing extends MainGui implements Observer,ActionListener {
         return gui;
     }
     public static void main(String[] arguments) throws Exception {
+        logging();
+        p("rounters we can ping: "+routersWeCanPing());
+        l.setLevel(Level.ALL);
         addFileHandler(l,new File(logFileDirectory),"main");
         p("local host: "+InetAddress.getLocalHost());
         Properties properties=properties(new File(propertiesFilename));
