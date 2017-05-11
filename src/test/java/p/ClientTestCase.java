@@ -2,7 +2,6 @@ package p;
 import static org.junit.Assert.*;
 import p.IO.*;
 import static p.IO.*;
-import static p.Main.*;
 import static p.MainTestCase.*;
 import java.io.IOException;
 import java.net.*;

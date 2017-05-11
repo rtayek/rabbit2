@@ -23,7 +23,7 @@ public class MainTestCase {
         // maybe use a real address?
         int first=toUnsignedInt(myInetAddress.getAddress()[3]);
         Group group=new Group(first,first,false); // only one so it does not matter
-        main=new Main(defaultProperties,group,Model.mark1.clone());
+        main=new Main(testProperties,group,Model.mark1.clone());
     }
     @After public void tearDown() throws Exception {
         int active=Thread.activeCount();
@@ -139,8 +139,8 @@ public class MainTestCase {
     @Test public void testFindMyDhcpInetAddressOnMyRouter() throws Exception {
         int first=100,n=32;
         Group group=new Group(first,first+n-1,false);
-        Main main=new Main(defaultProperties,group,Model.mark1);
-        Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter("192.168.1.1");
+        Main main=new Main(testProperties,group,Model.mark1);
+        Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(main.router);
         //p("interface addresses: "+set);
         assertTrue(set.size()>0);
         InetAddress inetAddress=set.iterator().next().getAddress();
@@ -150,7 +150,7 @@ public class MainTestCase {
         if(false) { // not using static ip address
             int first=11,n=32;
             Group group=new Group(first,first+n-1,false);
-            Main main=new Main(defaultProperties,group,Model.mark1);
+            Main main=new Main(testProperties,group,Model.mark1);
             Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(main.router);
             //p("interface addresses: "+set);
             assertTrue(set.size()>0);
@@ -197,7 +197,7 @@ public class MainTestCase {
         // use group to get list of socket addresses?
         for(int i=0;i<n;i++) {
             int myService=group.serviceBase+first+i;
-            Main main=new Main(defaultProperties,group,Model.mark1.clone(),myService);
+            Main main=new Main(testProperties,group,Model.mark1.clone(),myService);
             mains.add(main);
             Tablet tablet=main.instance();
             main.myInetAddress=myInetAddress;
@@ -207,7 +207,7 @@ public class MainTestCase {
         Main m1=mains.get(0);
         m1.instance().click(1);
         Thread.sleep(m1.group.connectionTimeout+100);
-        m1.printStats();
+        p(m1.statistics());
         for(Main main:mains)
             assertTrue(main.model.state(1));
         Main m2=mains.get(1);

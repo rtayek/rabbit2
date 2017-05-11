@@ -225,9 +225,8 @@ public class LogServer implements Runnable {
         // and the app needs to be restarted.
         // or we could require a static ip address ... 
         // let's not do that (require a static ip address). 
-        
         for(int i=0;i<=5;i++) {
-        String router="192.168."+i+".1";
+            String router="192.168."+i+".1";
             Set<InterfaceAddress> interfaceAddresses=IO.findMyInterfaceAddressesOnRouter(router);
             if(interfaceAddresses.size()>0) {
                 InetAddress inetAddress=interfaceAddresses.iterator().next().getAddress();
@@ -239,7 +238,18 @@ public class LogServer implements Runnable {
         if(logServers.size()==0) {
             p("no log servers were created!");
             p("check the interfaces to see if they are up.");
-        }
+        } else new Thread(new Runnable() {
+            @Override public void run() {
+                while(true) {
+                    printThreads();
+                    try {
+                        Thread.sleep(10_000);
+                    } catch(InterruptedException e) {
+                        p(this+" caught: "+e);
+                    }
+                }
+            }
+        },"thread loop").start();
     }
     public static final File logServerlogDirectory=new File("logServerlogDirectory");
     public static final int defaultLogServerService=5000;

@@ -3,7 +3,6 @@ import java.io.BufferedInputStream;
 import java.util.*;
 import java.util.Observable;
 import javax.sound.sampled.*;
-import static p.Main.*;
 import static p.IO.*;
 public interface Audio {
     enum Sound {

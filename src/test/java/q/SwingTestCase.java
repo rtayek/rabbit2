@@ -32,7 +32,7 @@ public class SwingTestCase {
     }
     @After public void tearDown() throws Exception {}
     @Test public void test() {
-        swing.guiAdapter.processClick(0);
+        swing.processClick(0);
         assertTrue(swing.main.model.state(1));
         if(swing.main.instance().isListening()) swing.main.instance().stopListening();
     }

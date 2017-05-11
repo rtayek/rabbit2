@@ -1,11 +1,9 @@
 package p;
-import static p.IO.*;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
 import java.util.*;
 import java.util.logging.*;
-import p.IO.*;
 public class IO {
     public interface Consumer<T> { // instead of 1.8 definition
         void accept(T t);
@@ -416,6 +414,42 @@ public class IO {
         }
         return null;
     }
+    public static String getSubnet(String currentIP) { // may be useful
+        int firstSeparator = currentIP.lastIndexOf("/");
+        int lastSeparator = currentIP.lastIndexOf(".");
+        return currentIP.substring(firstSeparator+1, lastSeparator+1);
+    }
+    public static class MySocketHandler extends SocketHandler {
+        public MySocketHandler(String host,int port, Logger logger) throws IOException {
+            super(host,port);
+            this.logger=logger;
+            setErrorManager(new ErrorManager() {
+                @Override public synchronized void error(String msg,Exception ex,int code) {
+                    super.error(msg,ex,code);
+                    System.out.println("error: "+msg+", "+ex+", "+code);
+                    removeHandler();
+                    failed=true;
+                }
+            });
+        }
+        void removeHandler() {
+            logger.removeHandler(MySocketHandler.this);
+            System.out.println("removed my socket handler");
+        }
+        final Logger logger;
+        Boolean failed=false;
+    }
+    public static MySocketHandler mySocketHandler(String host,Integer service,Logger logger) {
+        try {
+            MySocketHandler socketHandler=new MySocketHandler(host,service,logger);
+            // socketHandler.setFormatter(new LoggingHandler());
+            socketHandler.setLevel(Level.ALL);
+            return socketHandler;
+        } catch(IOException e) {
+            p("caught: '"+e+"' constructing socket handler on: "+host+":"+service);
+        }
+        return null;
+    }
     public static void addFileHandler(Logger logger,File logFileDirectory,String prefix) {
         if(!logFileDirectory.exists()) {
             if(logFileDirectory.mkdir()) l.info("created: "+logFileDirectory);
@@ -428,9 +462,44 @@ public class IO {
             Handler handler=new FileHandler(logFile.getPath(),50_000_000,10,false);
             handler.setLevel(Level.ALL);
             logger.addHandler(handler);
-            logger.warning("added file handler: "+handler);
+            logger.config("added file handler: "+handler);
         } catch(Exception e) {
             logger.warning("add file handler caught: "+e);
+        }
+    }
+    public static Set<InetAddress> routersWeCanPing(int n) {
+        Set<InetAddress> routers=new LinkedHashSet<>();
+        for(int i=0;i<n;i++) {
+            String host="192.168."+i+".1";
+            if(Exec.canWePing(host,1000)) try {
+                routers.add(InetAddress.getByName(host));
+            } catch(UnknownHostException e) {}
+        }
+        return routers;
+    }
+    public static boolean isAndroid() {
+        return System.getProperty("http.agent")!=null;
+    }
+    public static void logging() {
+        p("logger name: "+l.getName()+" is at level: "+l.getLevel());
+        p("parent: "+l.getParent());
+        Logger parent=l.getParent();
+        if(parent.getHandlers().length>0) for(Handler handler:parent.getHandlers())
+            p("parent handler: "+handler+": "+handler.getLevel());
+        else p("parent has no handlers!");
+        if(l.getHandlers().length>0) for(Handler handler:l.getHandlers()) {
+            p(handler+": "+handler.getLevel());
+        }
+        else {
+            p("logger has no handlers");
+            if(!isAndroid()) {
+                l.setUseParentHandlers(false);
+                p("set use parent handlers to false.");
+                Handler handler=new ConsoleHandler();
+                handler.setLevel(Level.ALL);
+                l.addHandler(handler);
+                p("added console handler.");
+            } else p("using parent handlers.");
         }
     }
     public static void main(String args[]) {

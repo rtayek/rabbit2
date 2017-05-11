@@ -3,7 +3,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.*;
 import static java.lang.Math.*;
 import java.util.*;
 import static p.IO.p;
@@ -83,12 +82,18 @@ public class Exec {
     }
     public static boolean canWePing(String host,int timeout) {
         String timeoutString="";
+        String[] command=null;
         if(isAndroid()) {
             timeoutString+=max(1,timeout/1_000);
-            return exec(new String[] {"ping","-c","1","-W",timeoutString,host})==0;
+            command=new String[] {"ping","-c","1","-W",timeoutString,host};
+            Exec exec=new Exec(command);
+            exec.run();
+            if(exec.rc!=0) exec.print();
+            return exec.rc==0;
         } else {
             timeoutString+=timeout;
-            Exec exec=new Exec(new String[] {"ping","-n","1","-w",""+timeoutString,host});
+            command=new String[] {"ping","-n","1","-w",""+timeoutString,host};
+            Exec exec=new Exec(command);
             exec.run();
             //exec.print();
             boolean ok=false;
@@ -96,12 +101,11 @@ public class Exec {
             if(!exec.output.contains("TTL expired in transit")&&exec.output.contains("Lost = 0")) // fragile! yes, very!
                 // fix this!
                 ok=true;
-            else ;//p("not ok,output: "+exec.output);
+            else;//p("not ok,output: "+exec.output);
             //p("returning: "+ok);
             return ok;
         }
     }
-
     public static void main(String[] args) throws InterruptedException,IOException {
         p("------");
         Exec exec=new Exec(new String[] {"ping","localhost"});

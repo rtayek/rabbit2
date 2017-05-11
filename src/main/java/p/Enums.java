@@ -1,6 +1,5 @@
 package p;
 import java.io.File;
-import java.util.Properties;
 import java.util.logging.Level;
 import static p.IO.*;
 import static p.Main.*;
@@ -51,7 +50,7 @@ public class Enums {
             if(main==null) l.severe("main is null in doItem: "+tabletMenuItem);
             switch(tabletMenuItem) {
                 case Statistics:
-                    main.printStats();
+                    p(main.statistics());
                 break;
                 case ResetPreferences:
                     l.info("reset preferences to: "+defaultProperties+" "+Main.propertiesFilename);

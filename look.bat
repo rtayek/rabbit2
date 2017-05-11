@@ -6,4 +6,5 @@
 for %%i in (015d2109aa080e1a 34049e2039c571a3)do (
 	echo %%i
  	adb -s %%i shell settings get global captive_portal_detection_enabled
+ 	adb -s %%i shell netsh wlan show interfaces
 	)

@@ -13,6 +13,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import p.LogServer.Copier;
 @RunWith(Parameterized.class) public class LogServerTestCase {
+    // this has no need of the logServerHost property.
     @Rule public TestRule watcher=new MyTestWatcher();
     @BeforeClass public static void setUpBeforeClass() throws Exception {}
     @AfterClass public static void tearDownAfterClass() throws Exception {}

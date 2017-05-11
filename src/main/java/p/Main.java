@@ -55,13 +55,13 @@ public class Main implements Runnable {
             Set<InterfaceAddress> networkInterfaces;
             networkInterfaces=IO.findMyInterfaceAddressesOnRouter(router);
             if(networkInterfaces.size()>0) {
-                if(networkInterfaces.size()>1) p("more than one network interface: "+networkInterfaces);
+                if(networkInterfaces.size()>1) p("route: "+router+" has more than one network interface: "+networkInterfaces);
                 InetAddress inetAddress=networkInterfaces.iterator().next().getAddress();
                 if(isInGroup(inetAddress)) {
                     p("using: "+inetAddress);
                     return inetAddress;
                 } else p(inetAddress+" is not in group: "+this);
-            } else p("no inetAddresses!");
+            } else p("no inetAddresses on: "+router);
             return null;
         }
         boolean isInGroup(InetAddress ipAddress) {
@@ -139,8 +139,6 @@ public class Main implements Runnable {
         public synchronized boolean isListening() {
             return isListening;
         }
-        // looks like we need to get rid of the lambdas
-        // since they need api 24.
         public synchronized boolean startListening() {
             if(myInetAddress==null) return false;
             if(isListening) stopListening();
@@ -234,9 +232,6 @@ public class Main implements Runnable {
         int lowOrderOctet=toUnsignedInt(ipAddress.getAddress()[3]);
         return lowOrderOctet;
     }
-    public static boolean isAndroid() {
-        return System.getProperty("http.agent")!=null;
-    }
     public boolean isRouterOk() {
         return router!=null&&Exec.canWePing(router,1_000);
     }
@@ -254,13 +249,14 @@ public class Main implements Runnable {
         string+="receives: "+Arrays.asList(receives);
         return string;
     }
-    public void printStats() {
-        p(""+statistics());
-    }
     @Override public void run() {
         p("router: "+router);
         l.info("enter run");
         while(true) {
+            if(socketHandler!=null) if(socketHandler.failed) {
+                l.warning("socket handler failed");
+                socketHandler=null;
+            }
             l.info("loop: "+loops+" "+myInetAddress+" "+instance().isListening());
             try {
                 while(myInetAddress==null) { // may change when router cycles power
@@ -285,7 +281,7 @@ public class Main implements Runnable {
                     if(ok) {
                         l.info("we can ping the log server: "+logServerHost);
                         if(socketHandler==null) {
-                            socketHandler=IO.socketHandler(logServerHost,LogServer.defaultLogServerService);
+                            socketHandler=IO.mySocketHandler(logServerHost,LogServer.defaultLogServerService,l);
                             if(socketHandler!=null) {
                                 l.addHandler(socketHandler);
                                 l.info("added socket handler to: "+logServerHost);
@@ -293,7 +289,15 @@ public class Main implements Runnable {
                         } else {
                             l.info("socket handler is probably logging");
                         }
-                    } else l.warning("can not ping log server: "+logServerHost);
+                    } else {
+                        l.warning("can not ping log server: "+logServerHost);
+                        if(socketHandler!=null) {
+                            p("closing socket handler.");
+                            socketHandler.close();
+                            l.removeHandler(socketHandler);
+                            socketHandler=null;
+                        }
+                    }
                 } else {
                     l.warning("not listening.");
                     boolean ok=instance().startListening();
@@ -303,6 +307,8 @@ public class Main implements Runnable {
                 if(!isRouterOk()) {
                     l.warning("router is not ok.");
                     if(socketHandler!=null) {
+                        p("closing socket handler.");
+                        socketHandler.close();
                         l.removeHandler(socketHandler);
                         socketHandler=null;
                     }
@@ -316,6 +322,9 @@ public class Main implements Runnable {
                 p("-----");
                 printThreads();
                 p("-----");
+                if(socketHandler!=null) {
+                    socketHandler.flush();
+                }
                 sleep(sleep);
             } catch(Exception e) {
                 l.severe(this+" caught: "+e);
@@ -354,38 +363,77 @@ public class Main implements Runnable {
         }
         return properties;
     }
-    public static Set<InetAddress> routersWeCanPing() {
-        Set<InetAddress> routers=new LinkedHashSet<>();
-        for(int i=0;i<5;i++) {
-            String host="192.168."+i+".1";
-            if(Exec.canWePing(host,1000)) try {
-                routers.add(InetAddress.getByName(host));
-            } catch(UnknownHostException e) {}
+    public static String findRouter(String router,String excludedRouter) {
+        loop:while(router.equals("")) {
+            Set<InetAddress> routersWeCanPing=routersWeCanPing(5);
+            if(routersWeCanPing.size()>0) for(InetAddress inetAddress:routersWeCanPing) {
+                String address=inetAddress.getHostAddress();
+                p("address: "+address);
+                if(excludedRouter.equals("")) {
+                    l.config("using first pingable router: "+address);
+                    router=address;
+                    //properties.setProperty("router",router);
+                    break loop;
+                } else if(!address.equals(excludedRouter)) {
+                    l.config("using router: "+address);
+                    router=address;
+                    //properties.setProperty("router",router);
+                    break loop;
+                } else l.config("skipping excluded router: "+excludedRouter);
+            }
+            else l.warning("no routers we can ping!");
         }
-        return routers;
-    }   public static void logging() {
-        p("logger name: "+l.getName()+" is at level: "+l.getLevel());
-        p("parent: "+l.getParent());
-        Logger parent=l.getParent();
-        if(parent.getHandlers().length>0) for(Handler handler:parent.getHandlers())
-            p("parent handler: "+handler+": "+handler.getLevel());
-        else p("parent has no handlers!");
-        if(l.getHandlers().length>0) for(Handler handler:l.getHandlers()) {
-            p(handler+": "+handler.getLevel());
-        }
-        else {
-            p("logger has no handlers");
-            if(!isAndroid()) {
-                l.setUseParentHandlers(false);
-                p("set use parent handlers to false.");
-                Handler handler=new ConsoleHandler();
-                handler.setLevel(Level.ALL);
-                l.addHandler(handler);
-                p("added console handler.");
-            } else p("using parent handlers.");
-        }
+        return router;
+    }
+    public static Main create() throws UnknownHostException {
+        // cycling power on the router causes the tablets to connect to my router.
+        // try cycling power on the laptop
+        // and see if tablets can reestablish socket handler. 
+        //
+        // if we come up and there is no wifi connected
+        // we need to try to connect
+        // if we are connected
+        // we could just use the ip and deduce the router
+        // case 1: we know the ssid and the router
+        //              make sure the correct wifi is connected
+        //              ensure that the router agrees with the ip address
+        // case 2: we know the ssid and do not know the router
+        //              make sure the correct wifi is connected
+        //              deduce the router from the ip address
+        // case 3: we do not know the ssid and do know the router
+        //              connect to some wifi
+        //              ensure that the router agrees with the ip address
+        // case 4: we do not know the ssid and do not know the router
+        //              connect to some wifi
+        //              deduce the ssid from wifi manager and deduce router from the ip address
+        // maybe start out with no ssid and no router
+        // and save what we can deduce in a properties file.
+        logging();
+        p("rounters we can ping: "+routersWeCanPing(5));
+        l.setLevel(Level.ALL);
+        addFileHandler(l,new File(logFileDirectory),"main");
+        p("local host: "+InetAddress.getLocalHost());
+        Properties properties=properties(new File(propertiesFilename));
+        String router=properties.getProperty("router","");
+        l.finest("finest");
+        p("router: "+router);
+        String excludedRouter=properties.getProperty("excludedRouter","");
+        p("excluded router: "+excludedRouter);
+        router=findRouter(router,excludedRouter);
+        if(router.equals(""))
+            l.severe("can not find router!");
+        properties.setProperty("router",router);
+        Integer first=new Integer(properties.getProperty("first"));
+        Integer last=new Integer(properties.getProperty("last"));
+        Group group=new Group(first,last,false);
+        Main main=new Main(properties,group,Model.mark1);
+        return main;
     }
     public static void main(String[] args) throws Exception {
+        String currentIP=InetAddress.getLocalHost().toString();
+        String subnet=getSubnet(currentIP);
+        p(currentIP);
+        p(subnet);
         // tests will put their log files in the same place?
         // we can make this find the router?
         // yes, we could iterate through interfaces, but they may not be up.
@@ -395,38 +443,9 @@ public class Main implements Runnable {
         // we need to know log server's address which is not static
         // so after a download or an install, we must edit the properties file
         // and enter the address of the log server if there is one,
-        logging();
-        p("rounters we can ping: "+routersWeCanPing());
-        l.setLevel(Level.ALL);
-        addFileHandler(l,new File(logFileDirectory),"main");
-        p("local host: "+InetAddress.getLocalHost());
-        if(true) { // seems like we can always add this!
-            String host="localhost";
-            SocketHandler socketHandler=IO.socketHandler(host,50505);
-            if(socketHandler!=null) {
-                socketHandler.setLevel(Level.ALL);
-                l.addHandler(socketHandler);
-                l.info("added socket handler to: "+host);
-            } else l.info("could not add socket handler to: "+host);
-        }
-        Properties properties=properties(new File(propertiesFilename));
-        Integer first=new Integer(properties.getProperty("first"));
-        Integer last=new Integer(properties.getProperty("last"));
-        Group group=new Group(first,last,false);
-        String router=properties.getProperty("router");
-        l.finest("finest");
-        p("router: "+router);
-        while(router==null||router.equals("")) {
-            Set<InetAddress> routersWeCanPing=routersWeCanPing();
-            if(routersWeCanPing.size()>0) {
-                l.config("we can ping: "+routersWeCanPing);
-                router=routersWeCanPing.iterator().next().getHostAddress();
-                l.config("using router: "+router);
-                properties.setProperty("router",router);
-                break;
-            } else l.warning("no routers we can ping!");
-        }
-        new Main(properties,group,Model.mark1).run();
+        //
+        Main main=create();
+        main.run();
     }
     public int sleep=shortSleep;
     public final String router,logServerHost;
@@ -437,16 +456,26 @@ public class Main implements Runnable {
     private Tablet instance;
     Integer loops=0;
     final Group group;
-    SocketHandler socketHandler;
+    MySocketHandler socketHandler;
     public static Level defaultLevel=Level.WARNING;
     public static String propertiesFilename="tablet.properties"; // may screw up testing
     public static final Properties defaultProperties=new Properties();
     static {
         defaultProperties.setProperty("ignore","true");
-        defaultProperties.setProperty("router","192.168.2.1");
+        //defaultProperties.setProperty("ssid","Linksys48993");
+        defaultProperties.setProperty("excludedRouter","192.168.1.1");
+        //defaultProperties.setProperty("router","192.168.2.1");
         defaultProperties.setProperty("logServerHost","192.168.2.127");
         defaultProperties.setProperty("first","100");
         defaultProperties.setProperty("last","131");
     }
-    public static final Integer shortSleep=1_000,mediumSleep=10_000,longSleep=100_000;
+    public static final Properties testProperties=new Properties();
+    static {
+        testProperties.setProperty("ignore","false");
+        testProperties.setProperty("router","192.168.1.1");
+        testProperties.setProperty("logServerHost","192.168.2.127");
+        testProperties.setProperty("first","100");
+        testProperties.setProperty("last","131");
+    }
+    public static final Integer shortSleep=1_000,mediumSleep=10_000,longSleep=10_000;
 }
