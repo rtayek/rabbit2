@@ -8,15 +8,12 @@ import java.util.*;
 import java.util.logging.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import p.Enums.*;
 import p.Enums.MenuItem;
 import p.Enums.LevelSubMenuItem;
 import p.Main.Group;
 import p.Main.Tablet;
-import q.GuiAdapter.GuiAdapterABC;
 import p.Main;
 import p.Model;
-import p.Audio.AudioObserver;
 import static p.Main.*;
 import static p.IO.*;
 enum Where {
@@ -118,7 +115,7 @@ public class Swing extends MainGui implements Observer,ActionListener {
                     AbstractButton button=(AbstractButton)e.getSource();
                     String name=button.getName(); // name starts at zero
                     Integer index=Integer.valueOf(name);
-                    guiAdapter.processClick(index);
+                    processClick(index);
                 }
             }
         };
@@ -174,9 +171,39 @@ public class Swing extends MainGui implements Observer,ActionListener {
         add(center,Where.center.k);
     }
     ActionListener actionListener;
+    public void processClick(int index) {
+        int id=index+1;
+        if(1<=id&&id<=main.model.buttons) main.instance().click(id);
+        else p(id+" is bad button id!");
+}   public void setButtonText(final int id,final String string) {
+        final Integer index=id-1; // model uses 1-n
+        if(SwingUtilities.isEventDispatchThread()) {
+            buttons[index].setText(string);
+        } else SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                buttons[index].setText(string);
+            }
+        });
+    }
+    public void setButtonState(final int id,final boolean state) {
+        final Integer index=id-1; // model uses 1-n
+        if(SwingUtilities.isEventDispatchThread()) {
+            buttons[index].setSelected(state);
+            buttons[index].setBackground(new Color(colors.color(index,state)));
+        } else SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                buttons[index].setSelected(state);
+                buttons[index].setBackground(new Color(colors.color(index,state)));
+            }
+        });
+    }
     @Override public void update(Observable o,Object hint) {
-        if(o instanceof Model&&o.equals(main.model)) guiAdapter.update(o,hint);
-        else l.warning("not a model or not our model!");
+        if(o instanceof Model&&o.equals(main.model)) {
+            for(Integer buttonId=1;buttonId<=main.model.buttons;buttonId++) {
+                setButtonState(buttonId,main.model.state(buttonId));
+                setButtonText(buttonId,"id");
+        }
+        } else l.warning("not a model or not our model!");
     }
     @Override public void actionPerformed(ActionEvent e) {
         l.info("action performed: "+e);
@@ -232,50 +259,13 @@ public class Swing extends MainGui implements Observer,ActionListener {
         menuBar.add(level);
         return menuBar;
     }
-    static GuiAdapterABC create(Main main,final Swing gui) {
-        GuiAdapterABC adapter=new GuiAdapterABC(main) {
-            @Override public void setButtonText(final int id,final String string) {
-                final Integer index=id-1; // model uses 1-n
-                if(SwingUtilities.isEventDispatchThread()) {
-                    gui.buttons[index].setText(string);
-                } else SwingUtilities.invokeLater(new Runnable() {
-                    public void run() {
-                        gui.buttons[index].setText(string);
-                    }
-                });
-            }
-            @Override public void setButtonState(final int id,final boolean state) {
-                final Integer index=id-1; // model uses 1-n
-                if(SwingUtilities.isEventDispatchThread()) {
-                    gui.buttons[index].setSelected(state);
-                    gui.buttons[index].setBackground(new Color(gui.colors.color(index,state)));
-                } else SwingUtilities.invokeLater(new Runnable() {
-                    public void run() {
-                        gui.buttons[index].setSelected(state);
-                        gui.buttons[index].setBackground(new Color(gui.colors.color(index,state)));
-                    }
-                });
-            }
-        };
-        return adapter;
-    }
     public static Swing create(final Main main) { // subclass instead
         final Swing gui=new Swing(main);
-        gui.guiAdapter=create(main,gui);
         gui.run();
         return gui;
     }
     public static void main(String[] arguments) throws Exception {
-        logging();
-        p("rounters we can ping: "+routersWeCanPing());
-        l.setLevel(Level.ALL);
-        addFileHandler(l,new File(logFileDirectory),"main");
-        p("local host: "+InetAddress.getLocalHost());
-        Properties properties=properties(new File(propertiesFilename));
-        Integer first=new Integer(properties.getProperty("first"));
-        Integer last=new Integer(properties.getProperty("last"));
-        Group group=new Group(first,last,false);
-        Main main=new Main(properties,group,Model.mark1.clone());
+        Main main=Main.create();
         new Thread(main,"rabbit 2 main").start();
         Tablet tablet=main.instance();
         main.model.addObserver(create(main));
@@ -284,7 +274,6 @@ public class Swing extends MainGui implements Observer,ActionListener {
     final Colors colors=new Colors();
     final AbstractButton[] buttons;
     int buttonSize=100;
-    public /* final */ GuiAdapterABC guiAdapter;
     HierarchyBoundsListener hierarchyBoundsListener=new HierarchyBoundsListener() {
         @Override public void ancestorMoved(HierarchyEvent e) {
             // p(e.toString());
