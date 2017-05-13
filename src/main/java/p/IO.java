@@ -1,4 +1,5 @@
 package p;
+import static p.IO.l;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
@@ -415,12 +416,12 @@ public class IO {
         return null;
     }
     public static String getSubnet(String currentIP) { // may be useful
-        int firstSeparator = currentIP.lastIndexOf("/");
-        int lastSeparator = currentIP.lastIndexOf(".");
-        return currentIP.substring(firstSeparator+1, lastSeparator+1);
+        int firstSeparator=currentIP.lastIndexOf("/");
+        int lastSeparator=currentIP.lastIndexOf(".");
+        return currentIP.substring(firstSeparator+1,lastSeparator+1);
     }
     public static class MySocketHandler extends SocketHandler {
-        public MySocketHandler(String host,int port, Logger logger) throws IOException {
+        public MySocketHandler(String host,int port,Logger logger) throws IOException {
             super(host,port);
             this.logger=logger;
             setErrorManager(new ErrorManager() {
@@ -501,6 +502,8 @@ public class IO {
                 p("added console handler.");
             } else p("using parent handlers.");
         }
+        l.setLevel(Level.ALL);
+        l.finest("finest");
     }
     public static void main(String args[]) {
         addFileHandler(l,new File(logFileDirectory),"IO");

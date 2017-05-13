@@ -6,6 +6,7 @@ import java.util.logging.*;
 import static p.IO.*;
 import static p.IO.Connection.*;
 import p.IO.Acceptor;
+import p.Main.Group;
 //git fetch origin
 //git reset --hard origin/master
 // make sure the firewalls are off in windows!
@@ -39,8 +40,13 @@ public class Main implements Runnable {
         }
         model.addObserver(new Audio.AudioObserver(model));
     }
+    public static class Statistics { // if we use a set of static addresses
+        Integer sends=0,sendFailures=0,receives=0;
+    }
     public static class Group { // no need to clone unless we start storing
-        // history or something in here.
+        // Map<SocketAddress,Statistics> statistics=new LinkedHashMap<>();
+        // use the above if we go to a set of static addresses.
+        // no need to clone unless we store history or something in here.
         // maybe needed if we have a strange hybrid combination of tablets?
         public Group(int first,int last,boolean sameInetAddress) {
             this.first=first;
@@ -51,6 +57,7 @@ public class Main implements Runnable {
         }
         // try to make this just a set of addresses as opposed to only a range
         // no, that may not work
+        // why not?
         InetAddress findMyInetAddress(String router) {
             Set<InterfaceAddress> networkInterfaces;
             networkInterfaces=IO.findMyInterfaceAddressesOnRouter(router);
@@ -330,7 +337,7 @@ public class Main implements Runnable {
                 l.severe(this+" caught: "+e);
             }
             loops++;
-            if(loops>100) sleep=longSleep;
+            if(loops>200) sleep=longSleep;
             else if(loops>10) sleep=mediumSleep;
         }
     }
@@ -363,7 +370,11 @@ public class Main implements Runnable {
         }
         return properties;
     }
-    public static String findRouter(String router,String excludedRouter) {
+    public static void findRouter(Properties properties) {
+        String router=properties.getProperty("router","");
+        p("router: "+router);
+        String excludedRouter=properties.getProperty("excludedRouter","");
+        p("excluded router: "+excludedRouter);
         loop:while(router.equals("")) {
             Set<InetAddress> routersWeCanPing=routersWeCanPing(5);
             if(routersWeCanPing.size()>0) for(InetAddress inetAddress:routersWeCanPing) {
@@ -383,9 +394,27 @@ public class Main implements Runnable {
             }
             else l.warning("no routers we can ping!");
         }
-        return router;
+        if(router.equals("")) l.severe("can not find router!");
+        else {
+            properties.setProperty("router",router);
+            // store properties?
+        }
     }
-    public static Main create() throws UnknownHostException {
+    public static void main(String[] args) throws Exception {
+        String currentIP=InetAddress.getLocalHost().toString();
+        String subnet=getSubnet(currentIP);
+        p(currentIP);
+        p(subnet);
+        // tests will put their log files in the same place?
+        // we can make this find the router?
+        // yes, we could iterate through interfaces, but they may not be up.
+        // we could see what we can ping, but they may not be up.
+        // so worst case, we need to know the router.
+        // and we can probably get by trying 192.168.0.1 or 192.168.1.1. 
+        // we need to know log server's address which is not static
+        // so after a download or an install, we must edit the properties file
+        // and enter the address of the log server if there is one,
+        //
         // cycling power on the router causes the tablets to connect to my router.
         // try cycling power on the laptop
         // and see if tablets can reestablish socket handler. 
@@ -410,41 +439,14 @@ public class Main implements Runnable {
         // and save what we can deduce in a properties file.
         logging();
         p("rounters we can ping: "+routersWeCanPing(5));
-        l.setLevel(Level.ALL);
         addFileHandler(l,new File(logFileDirectory),"main");
         p("local host: "+InetAddress.getLocalHost());
         Properties properties=properties(new File(propertiesFilename));
-        String router=properties.getProperty("router","");
-        l.finest("finest");
-        p("router: "+router);
-        String excludedRouter=properties.getProperty("excludedRouter","");
-        p("excluded router: "+excludedRouter);
-        router=findRouter(router,excludedRouter);
-        if(router.equals(""))
-            l.severe("can not find router!");
-        properties.setProperty("router",router);
+        findRouter(properties);
         Integer first=new Integer(properties.getProperty("first"));
         Integer last=new Integer(properties.getProperty("last"));
         Group group=new Group(first,last,false);
         Main main=new Main(properties,group,Model.mark1);
-        return main;
-    }
-    public static void main(String[] args) throws Exception {
-        String currentIP=InetAddress.getLocalHost().toString();
-        String subnet=getSubnet(currentIP);
-        p(currentIP);
-        p(subnet);
-        // tests will put their log files in the same place?
-        // we can make this find the router?
-        // yes, we could iterate through interfaces, but they may not be up.
-        // we could see what we can ping, but they may not be up.
-        // so worst case, we need to know the router.
-        // and we can probably get by trying 192.168.0.1 or 192.168.1.1. 
-        // we need to know log server's address which is not static
-        // so after a download or an install, we must edit the properties file
-        // and enter the address of the log server if there is one,
-        //
-        Main main=create();
         main.run();
     }
     public int sleep=shortSleep;
@@ -473,9 +475,9 @@ public class Main implements Runnable {
     static {
         testProperties.setProperty("ignore","false");
         testProperties.setProperty("router","192.168.1.1");
-        testProperties.setProperty("logServerHost","192.168.2.127");
+        testProperties.setProperty("logServerHost","localhost");
         testProperties.setProperty("first","100");
         testProperties.setProperty("last","131");
     }
-    public static final Integer shortSleep=1_000,mediumSleep=10_000,longSleep=10_000;
+    public static final Integer shortSleep=1_000,mediumSleep=10_000,longSleep=100_000;
 }

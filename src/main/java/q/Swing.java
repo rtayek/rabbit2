@@ -265,7 +265,16 @@ public class Swing extends MainGui implements Observer,ActionListener {
         return gui;
     }
     public static void main(String[] arguments) throws Exception {
-        Main main=Main.create();
+        logging();
+        p("rounters we can ping: "+routersWeCanPing(5));
+        addFileHandler(l,new File(logFileDirectory),"main");
+        p("local host: "+InetAddress.getLocalHost());
+        Properties properties=Main.properties(new File(Main.propertiesFilename));
+        findRouter(properties);
+        Integer first=new Integer(properties.getProperty("first"));
+        Integer last=new Integer(properties.getProperty("last"));
+        Group group=new Group(first,last,false);
+        Main main=new Main(properties,group,Model.mark1);
         new Thread(main,"rabbit 2 main").start();
         Tablet tablet=main.instance();
         main.model.addObserver(create(main));
