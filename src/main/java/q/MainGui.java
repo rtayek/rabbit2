@@ -34,7 +34,7 @@ public abstract class MainGui extends JPanel {
             MainGui.this.frame.setVisible(true);
         }
     }
-    protected void run() {
+    protected void run() { // bad name
         initialize(); // non gui stuff
         setLayout(new BorderLayout());
         SwingUtilities.invokeLater(new Runnable() {

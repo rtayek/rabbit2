@@ -65,7 +65,7 @@ public class Main implements Runnable {
                 if(networkInterfaces.size()>1) p("route: "+router+" has more than one network interface: "+networkInterfaces);
                 InetAddress inetAddress=networkInterfaces.iterator().next().getAddress();
                 if(isInGroup(inetAddress)) {
-                    p("using: "+inetAddress);
+                    p("using inet address: "+inetAddress);
                     return inetAddress;
                 } else p(inetAddress+" is not in group: "+this);
             } else p("no inetAddresses on: "+router);
@@ -256,89 +256,93 @@ public class Main implements Runnable {
         string+="receives: "+Arrays.asList(receives);
         return string;
     }
-    @Override public void run() {
-        p("router: "+router);
-        l.info("enter run");
-        while(true) {
-            if(socketHandler!=null) if(socketHandler.failed) {
-                l.warning("socket handler failed");
-                socketHandler=null;
+    protected void loop() {
+        if(socketHandler!=null) if(socketHandler.failed) {
+            l.warning("socket handler failed");
+            socketHandler=null;
+        }
+        l.info("loop: "+loops+" "+myInetAddress+" "+instance().isListening());
+        try {
+            while(myInetAddress==null) { // may change when router cycles power
+                l.warning("we do not know our ip address!");
+                if(false) try {
+                    myInetAddress=InetAddress.getLocalHost();
+                } catch(UnknownHostException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                else myInetAddress=group.findMyInetAddress(router);
+                if(myInetAddress!=null) l.warning("found my ip address: "+myInetAddress);
+                else sleep(sleep);
             }
-            l.info("loop: "+loops+" "+myInetAddress+" "+instance().isListening());
-            try {
-                while(myInetAddress==null) { // may change when router cycles power
-                    l.warning("we do not know our ip address!");
-                    if(false) try {
-                        myInetAddress=InetAddress.getLocalHost();
-                    } catch(UnknownHostException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                    else myInetAddress=group.findMyInetAddress(router);
-                    if(myInetAddress!=null) l.warning("found my ip address: "+myInetAddress);
-                    else sleep(sleep);
-                }
-                while(!isRouterOk()) { // maybe this should be first?
-                    l.warning("router is not up!");
-                    myInetAddress=null; // may change when router cycles power
-                    sleep(sleep);
-                }
-                if(instance().isListening) {
-                    boolean ok=Exec.canWePing(logServerHost,1_000);
-                    if(ok) {
-                        l.info("we can ping the log server: "+logServerHost);
-                        if(socketHandler==null) {
-                            socketHandler=IO.mySocketHandler(logServerHost,LogServer.defaultLogServerService,l);
-                            if(socketHandler!=null) {
-                                l.addHandler(socketHandler);
-                                l.info("added socket handler to: "+logServerHost);
-                            } else l.info("could not add socket handler to: "+logServerHost);
-                        } else {
-                            l.info("socket handler is probably logging");
-                        }
-                    } else {
-                        l.warning("can not ping log server: "+logServerHost);
+            while(!isRouterOk()) { // maybe this should be first?
+                l.warning("router is not up!");
+                myInetAddress=null; // may change when router cycles power
+                sleep(sleep);
+            }
+            if(instance().isListening) {
+                boolean ok=Exec.canWePing(logServerHost,1_000);
+                if(ok) {
+                    l.info("we can ping the log server: "+logServerHost);
+                    if(socketHandler==null) {
+                        socketHandler=IO.mySocketHandler(logServerHost,LogServer.defaultLogServerService,l);
                         if(socketHandler!=null) {
-                            p("closing socket handler.");
-                            socketHandler.close();
-                            l.removeHandler(socketHandler);
-                            socketHandler=null;
-                        }
+                            l.addHandler(socketHandler);
+                            l.info("added socket handler to: "+logServerHost);
+                        } else l.info("could not add socket handler to: "+logServerHost);
+                    } else {
+                        l.info("socket handler is probably logging");
                     }
                 } else {
-                    l.warning("not listening.");
-                    boolean ok=instance().startListening();
-                    if(ok) l.info("start listening on: "+instance().acceptor.toString());
-                    else l.warning("can not start listening");
-                }
-                if(!isRouterOk()) {
-                    l.warning("router is not ok.");
+                    l.warning("can not ping log server: "+logServerHost);
                     if(socketHandler!=null) {
                         p("closing socket handler.");
                         socketHandler.close();
                         l.removeHandler(socketHandler);
                         socketHandler=null;
                     }
-                    if(instance().isListening) {
-                        l.warning("something is not working, stopping listening.");
-                        instance().stopListening();
-                    }
                 }
-                l.info("\n"+statistics());
-                //printStats();
-                p("-----");
-                printThreads();
-                p("-----");
-                if(socketHandler!=null) {
-                    socketHandler.flush();
-                }
-                sleep(sleep);
-            } catch(Exception e) {
-                l.severe(this+" caught: "+e);
+            } else {
+                l.warning("not listening.");
+                boolean ok=instance().startListening();
+                if(ok) l.info("start listening on: "+instance().acceptor.toString());
+                else l.warning("can not start listening");
             }
-            loops++;
-            if(loops>200) sleep=longSleep;
-            else if(loops>10) sleep=mediumSleep;
+            if(!isRouterOk()) {
+                l.warning("router is not ok.");
+                if(socketHandler!=null) {
+                    p("closing socket handler.");
+                    socketHandler.close();
+                    l.removeHandler(socketHandler);
+                    socketHandler=null;
+                }
+                if(instance().isListening) {
+                    l.warning("something is not working, stopping listening.");
+                    instance().stopListening();
+                }
+            }
+            l.info("\n"+statistics());
+            //printStats();
+            p("-----");
+            printThreads();
+            p("-----");
+            if(socketHandler!=null) {
+                socketHandler.flush();
+            }
+            sleep(sleep);
+        } catch(Exception e) {
+            l.severe(this+" caught: "+e);
+        }
+        loops++;
+        if(loops>200) sleep=longSleep;
+        else if(loops>10) sleep=mediumSleep;
+    }
+    @Override public void run() {
+        Audio.audio.play(Audio.Sound.store_door_chime_mike_koenig_570742973);
+        p("router: "+router);
+        l.info("enter run");
+        while(true) {
+            loop();
         }
     }
     public static void store(File file,Properties properties) {
@@ -375,7 +379,8 @@ public class Main implements Runnable {
         p("router: "+router);
         String excludedRouter=properties.getProperty("excludedRouter","");
         p("excluded router: "+excludedRouter);
-        loop:while(router.equals("")) {
+        // this is broken, fix it!
+        if(router.equals("")) {
             Set<InetAddress> routersWeCanPing=routersWeCanPing(5);
             if(routersWeCanPing.size()>0) for(InetAddress inetAddress:routersWeCanPing) {
                 String address=inetAddress.getHostAddress();
@@ -384,12 +389,12 @@ public class Main implements Runnable {
                     l.config("using first pingable router: "+address);
                     router=address;
                     //properties.setProperty("router",router);
-                    break loop;
+                    break;
                 } else if(!address.equals(excludedRouter)) {
                     l.config("using router: "+address);
                     router=address;
                     //properties.setProperty("router",router);
-                    break loop;
+                    break;
                 } else l.config("skipping excluded router: "+excludedRouter);
             }
             else l.warning("no routers we can ping!");
@@ -437,12 +442,16 @@ public class Main implements Runnable {
         //              deduce the ssid from wifi manager and deduce router from the ip address
         // maybe start out with no ssid and no router
         // and save what we can deduce in a properties file.
+        Properties properties=properties(new File(propertiesFilename));
+        p("propertied: "+properties);
         logging();
         p("rounters we can ping: "+routersWeCanPing(5));
         addFileHandler(l,new File(logFileDirectory),"main");
         p("local host: "+InetAddress.getLocalHost());
-        Properties properties=properties(new File(propertiesFilename));
-        findRouter(properties);
+        while(properties.getProperty("router","").equals("")) {
+            findRouter(properties);
+            Thread.sleep(1_000);
+        }
         Integer first=new Integer(properties.getProperty("first"));
         Integer last=new Integer(properties.getProperty("last"));
         Group group=new Group(first,last,false);
@@ -464,7 +473,7 @@ public class Main implements Runnable {
     public static final Properties defaultProperties=new Properties();
     static {
         defaultProperties.setProperty("ignore","true");
-        //defaultProperties.setProperty("ssid","Linksys48993");
+        //defaultProperties.setProperty("ssid","\"Linksys48993\"");
         defaultProperties.setProperty("excludedRouter","192.168.1.1");
         //defaultProperties.setProperty("router","192.168.2.1");
         defaultProperties.setProperty("logServerHost","192.168.2.127");
