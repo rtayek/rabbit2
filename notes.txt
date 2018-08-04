@@ -1,0 +1,4 @@
+this looks like the new version.
+android code is Cb2
+looks like the current software is in conradapps/rabbit and Cb7
+current ips 192.168.0.11-192.168.0.20

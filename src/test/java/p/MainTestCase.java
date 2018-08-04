@@ -163,7 +163,7 @@ public class MainTestCase {
         Group group=new Group(first,first+n-1,false);
         String router=defaultProperties.getProperty("router");
         if(Exec.canWePing(router,1_000)) {
-            Main main=new Main(defaultProperties,group,Model.mark1);
+            /*Main main=*/new Main(defaultProperties,group,Model.mark1);
             Set<InterfaceAddress> set=findMyInterfaceAddressesOnRouter(router);
             p("interface addresses: "+set);
             assertTrue(set.size()>0);
