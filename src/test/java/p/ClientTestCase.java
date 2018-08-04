@@ -51,6 +51,8 @@ import org.junit.runners.Parameterized.Parameters;
         acceptor.close();
         if(outgoing!=null) outgoing.close();
         if(incoming!=null) incoming.close();
+        // order of the above does not seem to matter.
+        // but copy of IO in rubiks prohect fails!
         int active=Thread.activeCount();
         if(printExtraThreads) {
             if(active>threads) {
@@ -95,8 +97,19 @@ import org.junit.runners.Parameterized.Parameters;
         // and it's also on the server, not the client :(
     }
     @Test public void testClientSend() throws UnknownHostException,IOException,InterruptedException {
+        // this test works fine.
+        // but the stuff in Connection.main does not!
         Socket socket=new Socket(inetAddress,service);
-        outgoing=new Connection(socket,null,null,true);
+        outgoing=new Connection(socket,new Consumer<String>() {
+            @Override public void accept(final String string) {
+                p("outgoing received: "+string);
+            }
+        },new Consumer<Exception>() {
+            @Override public void accept(Exception exception) {
+                p("outgoing caught: "+exception);
+            }
+        },true);
+
         outgoing.send("foo");
         assertEquals(1,outgoing.sent);
         Thread.sleep(10);
