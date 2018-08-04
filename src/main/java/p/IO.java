@@ -1,5 +1,4 @@
 package p;
-import static p.IO.l;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
@@ -124,21 +123,53 @@ public class IO {
         }
         public static void main(String arguments[]) throws InterruptedException {
             p("hosts: "+hosts());
-            String host=arguments!=null&&arguments.length>0?arguments[0]:"192.168.2.127";
+            String host=arguments!=null&&arguments.length>0?arguments[0]:"192.168.1.6"; // was: 192.168.1.127
             InetSocketAddress inetSocketAddress=new InetSocketAddress(host,8080);
             p("socket address: "+inetSocketAddress);
             Socket socket=connect(inetSocketAddress,5_000);
             if(socket!=null) {
                 p("connected");
-                Connection connection=new Connection(socket,new Consumer<String>() {
+                Connection incoming=new Connection(socket,new Consumer<String>() {
                     @Override public void accept(final String string) {
-                        p("received: "+string);
+                        p("incoming received: "+string);
                     }
-                },null,true);
-                connection.start();
-                Thread.sleep(10_000);
-                //boolean ok=connection.send("foo");
+                },new Consumer<Exception>() {
+                    @Override public void accept(Exception exception) {
+                        p("incoming caught: "+exception);
+                    }
+                },true);
+                incoming.start();
+                Socket socket2=connect(inetSocketAddress,5_000);
+                Thread.sleep(5_000);
+                /*
+                Connection outgoing=new Connection(socket2,new Consumer<String>() {
+                    @Override public void accept(final String string) {
+                        p("outgoing received: "+string);
+                    }
+                },new Consumer<Exception>() {
+                    @Override public void accept(Exception exception) {
+                        p("outgoing caught: "+exception);
+                    }
+                },true);
+                p(toS(outgoing));
+                Connection c=new Connection(socket2,new Consumer<String>() {
+                    @Override public void accept(final String string) {
+                        p("c received: "+string);
+                    }
+                },new Consumer<Exception>() {
+                    @Override public void accept(Exception exception) {
+                        p("c: "+exception);
+                    }
+                },true);
+                p(toS(c));
+                */
+                boolean ok=incoming.send("foo");
+                for(int i=0;i<100;i++)
+                    incoming.send("foo");
+                p("ok: "+ok);
                 //connection.close();
+                Thread.sleep(5_000);
+                printThreads();
             } else p("socket is null!");
         }
         final Consumer<String> stringConsumer;
@@ -281,11 +312,9 @@ public class IO {
         return threads;
     }
     public static void printThreads(List<String> excluded) {
-        // p("enter print threads");
         Thread[] threads=getThreads();
         for(Thread thread:threads)
-            if(thread!=null&&excluded!=null&&!excluded.contains(thread.getName())) p(toS(thread));
-        // p("exit print threads");
+            if(thread!=null&&(excluded==null||!excluded.contains(thread.getName()))) p(toS(thread));
     }
     public static void printThreads() {
         printThreads(Collections.<String> emptyList());
