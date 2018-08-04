@@ -9,6 +9,7 @@ repositories {
     jcenter()
 }
 dependencies {
+ 	//compile 'junit:junit:4.12' // only needed if some tests are in src/
     testCompile 'junit:junit:4.12'
 }
 sourceCompatibility = 1.7
