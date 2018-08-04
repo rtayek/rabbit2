@@ -5,13 +5,11 @@ import java.awt.event.*;
 import java.io.File;
 import java.net.*;
 import java.util.*;
-import java.util.logging.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import p.Enums.*;
 import p.Enums.MenuItem;
-import p.Enums.LevelSubMenuItem;
 import p.Main.Group;
-import p.Main.Tablet;
 import p.Main;
 import p.Model;
 import static p.Main.*;
@@ -175,7 +173,8 @@ public class Swing extends MainGui implements Observer,ActionListener {
         int id=index+1;
         if(1<=id&&id<=main.model.buttons) main.instance().click(id);
         else p(id+" is bad button id!");
-}   public void setButtonText(final int id,final String string) {
+    }
+    public void setButtonText(final int id,final String string) {
         final Integer index=id-1; // model uses 1-n
         if(SwingUtilities.isEventDispatchThread()) {
             buttons[index].setText(string);
@@ -202,12 +201,18 @@ public class Swing extends MainGui implements Observer,ActionListener {
             for(Integer buttonId=1;buttonId<=main.model.buttons;buttonId++) {
                 setButtonState(buttonId,main.model.state(buttonId));
                 setButtonText(buttonId,"id");
-        }
+            }
         } else l.warning("not a model or not our model!");
     }
     @Override public void actionPerformed(ActionEvent e) {
         l.info("action performed: "+e);
-        try {
+        if(e.getActionCommand().startsWith("192.168.")) {
+            if(PropertiesSubMenuItem.map.keySet().contains(e.getActionCommand())) {
+                PropertiesSubMenuItem item=PropertiesSubMenuItem.map.get(e.getActionCommand());
+                p("item: "+item.name()+" "+item.string());
+                PropertiesSubMenuItem.map.get(e.getActionCommand()).doItem(main);
+            } else l.info("action not handled: "+e.getActionCommand());
+        } else try {
             MenuItem item=MenuItem.valueOf(e.getActionCommand());
             if(item!=null) {
                 if(item.equals(MenuItem.Log)) { // no text view on android
@@ -217,19 +222,23 @@ public class Swing extends MainGui implements Observer,ActionListener {
                 } else item.doItem(main);
             } else l.info("action not handled: "+e.getActionCommand());
         } catch(Exception e2) {
+            p("caught: "+e2);
             try {
                 LevelSubMenuItem item=LevelSubMenuItem.valueOf(e.getActionCommand());
                 if(item!=null) {
                     item.doItem((Main)null);
                 } else l.info("action not handled: "+e.getActionCommand());
-            } catch(Exception e3) {}
+            } catch(Exception e3) {
+                // add in new properties sub menu here?
+                p("caught: "+e3);
+            }
         }
     }
-    JMenuItem addMenuItem(JMenu menu,String name) {
-        JMenuItem menuItem=new JMenuItem(name);
-        int vk=(KeyEvent.VK_A-1)+(name.toUpperCase().charAt(0)-'A');
+    JMenuItem addMenuItem(JMenu menu,Item item) {
+        JMenuItem menuItem=item.isCheckable()?new JCheckBoxMenuItem(item.string()):new JMenuItem(item.string());
+        int vk=(KeyEvent.VK_A)+(item.string().toUpperCase().charAt(0)-'A');
         menuItem.setAccelerator(KeyStroke.getKeyStroke(vk,ActionEvent.ALT_MASK));
-        menuItem.getAccessibleContext().setAccessibleDescription(name);
+        menuItem.getAccessibleContext().setAccessibleDescription(item.string());
         menuItem.addActionListener(this);
         menu.add(menuItem);
         return menuItem;
@@ -241,7 +250,7 @@ public class Swing extends MainGui implements Observer,ActionListener {
         menu.getAccessibleContext().setAccessibleDescription("Options menu");
         // Reset,Ping,Disconnect,Connect,Log;
         for(MenuItem menuItem:MenuItem.values())
-            addMenuItem(menu,menuItem.name());
+            addMenuItem(menu,menuItem);
         if(false) {
             JMenuItem menuItem=null;
             menuItem=new JMenuItem("Log",KeyEvent.VK_C);
@@ -255,8 +264,25 @@ public class Swing extends MainGui implements Observer,ActionListener {
         menu.setMnemonic(KeyEvent.VK_L);
         menu.getAccessibleContext().setAccessibleDescription("Level menu");
         for(LevelSubMenuItem levelSubMenuItem:LevelSubMenuItem.values())
-            addMenuItem(level,levelSubMenuItem.name());
+            addMenuItem(level,levelSubMenuItem);
         menuBar.add(level);
+        JMenu propertiesMenu=new JMenu("Properties");
+        menu.setMnemonic(KeyEvent.VK_P);
+        menu.getAccessibleContext().setAccessibleDescription("properties menu");
+        for(PropertiesSubMenuItem propertiesSubMenuItem:PropertiesSubMenuItem.values()) {
+            p(propertiesSubMenuItem+" "+main.properties.getProperty(propertiesSubMenuItem.name()));
+            JMenuItem jMenuItem=addMenuItem(propertiesMenu,propertiesSubMenuItem);
+            if(propertiesSubMenuItem.isCheckable()) {
+                p("enum string: "+propertiesSubMenuItem.string);
+                String property=main.properties.getProperty(propertiesSubMenuItem.string,"");
+                p("property: "+property);
+                boolean check=property.equals("true");
+                p("check: "+check);
+                ((JCheckBoxMenuItem)jMenuItem).setSelected(check);
+                //((JCheckBoxMenuItem)jMenuItem).setEnabled(main.properties.getProperty(propertiesSubMenuItem.string,"").equals("true"));
+            }
+        }
+        menuBar.add(propertiesMenu);
         return menuBar;
     }
     public static Swing create(final Main main) { // subclass instead
@@ -273,7 +299,8 @@ public class Swing extends MainGui implements Observer,ActionListener {
         while(properties.getProperty("router","").equals("")) {
             findRouter(properties);
             Thread.sleep(1_000);
-        }        Integer first=new Integer(properties.getProperty("first"));
+        }
+        Integer first=new Integer(properties.getProperty("first"));
         Integer last=new Integer(properties.getProperty("last"));
         Group group=new Group(first,last,false);
         Main main=new Main(properties,group,Model.mark1);
