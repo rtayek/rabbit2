@@ -5,8 +5,8 @@ import java.util.*;
 import java.util.logging.*;
 import static p.IO.*;
 import static p.IO.Connection.*;
+import p.Enums.PropertiesSubMenuItem;
 import p.IO.Acceptor;
-import p.Main.Group;
 //git fetch origin
 //git reset --hard origin/master
 // make sure the firewalls are off in windows!
@@ -23,7 +23,8 @@ public class Main implements Runnable {
         // ip address is required to broadcast or receive
         // so maybe make these setable
         // and guard everything with a test for non null?
-        router=properties.getProperty("router");
+        this.properties=properties;
+        router=properties.getProperty("router","");
         logServerHost=properties.getProperty("logServerHost");
         l.info(this+" constructed at: "+new Date());
         if(group.sameInetAddress!=(myService!=null)) throw new RuntimeException("use ctor with service!");
@@ -363,7 +364,7 @@ public class Main implements Runnable {
             properties.load(fileReader);
             p("loaded: "+properties);
             fileReader.close();
-            String ignore=properties.getProperty("ignore");
+            String ignore=properties.getProperty(ignorePropertyName);
             if(ignore.equals("true")) { // so we do not have to edit this file on the tablet
                 p("ingoring properties file, using defaults: "+defaultProperties);
                 properties=defaultProperties;
@@ -377,32 +378,36 @@ public class Main implements Runnable {
     public static void findRouter(Properties properties) {
         String router=properties.getProperty("router","");
         p("router: "+router);
-        String excludedRouter=properties.getProperty("excludedRouter","");
-        p("excluded router: "+excludedRouter);
+        Set<String> excludedRouters=new TreeSet<>();
+        for(PropertiesSubMenuItem item:PropertiesSubMenuItem.values()) {
+            p(item+" "+item.string);
+            if(item.name().startsWith("excludedRouter")) {
+                p(item+" "+properties.getProperty(item.string,""));
+                if(properties.getProperty(item.string,"").equals("true")) excludedRouters.add(item.string);
+            }
+        }
+        p("excluded routers: "+excludedRouters);
         // this is broken, fix it!
         if(router.equals("")) {
             Set<InetAddress> routersWeCanPing=routersWeCanPing(5);
-            if(routersWeCanPing.size()>0) for(InetAddress inetAddress:routersWeCanPing) {
-                String address=inetAddress.getHostAddress();
-                p("address: "+address);
-                if(excludedRouter.equals("")) {
-                    l.config("using first pingable router: "+address);
-                    router=address;
-                    //properties.setProperty("router",router);
-                    break;
-                } else if(!address.equals(excludedRouter)) {
-                    l.config("using router: "+address);
-                    router=address;
-                    //properties.setProperty("router",router);
-                    break;
-                } else l.config("skipping excluded router: "+excludedRouter);
-            }
-            else l.warning("no routers we can ping!");
+            if(routersWeCanPing.size()>0) {
+                for(InetAddress inetAddress:routersWeCanPing) {
+                    String address=inetAddress.getHostAddress();
+                    p("trye address: "+address);
+                    if(excludedRouters.contains(address)) l.config("skipping excluded router: "+address);
+                    else {
+                        l.config("using first pingable router: "+address);
+                        router=address;
+                        break;
+                    }
+                }
+                if(router.equals("")) l.warning("no routers that are not excluded!");
+            } else l.warning("no routers we can ping!");
         }
         if(router.equals("")) l.severe("can not find router!");
         else {
             properties.setProperty("router",router);
-            // store properties?
+            store(new File(Main.propertiesFilename),properties);
         }
     }
     public static void main(String[] args) throws Exception {
@@ -452,12 +457,13 @@ public class Main implements Runnable {
             findRouter(properties);
             Thread.sleep(1_000);
         }
-        Integer first=new Integer(properties.getProperty("first"));
-        Integer last=new Integer(properties.getProperty("last"));
+        Integer first=new Integer(properties.getProperty("first","100"));
+        Integer last=new Integer(properties.getProperty("last","131"));
         Group group=new Group(first,last,false);
         Main main=new Main(properties,group,Model.mark1);
         main.run();
     }
+    public final Properties properties;
     public int sleep=shortSleep;
     public final String router,logServerHost;
     public final Integer myService; // just for testing
@@ -469,12 +475,15 @@ public class Main implements Runnable {
     final Group group;
     MySocketHandler socketHandler;
     public static Level defaultLevel=Level.WARNING;
+    public static String ignorePropertyName="ignore";
     public static String propertiesFilename="tablet.properties"; // may screw up testing
     public static final Properties defaultProperties=new Properties();
     static {
-        defaultProperties.setProperty("ignore","true");
+        defaultProperties.setProperty(ignorePropertyName,"true");
         //defaultProperties.setProperty("ssid","\"Linksys48993\"");
-        defaultProperties.setProperty("excludedRouter","192.168.1.1");
+        defaultProperties.setProperty(PropertiesSubMenuItem.excludedRouter0.string,"true");
+        //defaultProperties.setProperty(PropertiesSubMenuItem.excludedRouter1.string,"true");
+        defaultProperties.setProperty(PropertiesSubMenuItem.excludedRouter2.string,"false");
         //defaultProperties.setProperty("router","192.168.2.1");
         defaultProperties.setProperty("logServerHost","192.168.2.127");
         defaultProperties.setProperty("first","100");
@@ -482,7 +491,7 @@ public class Main implements Runnable {
     }
     public static final Properties testProperties=new Properties();
     static {
-        testProperties.setProperty("ignore","false");
+        testProperties.setProperty(ignorePropertyName,"false");
         testProperties.setProperty("router","192.168.1.1");
         testProperties.setProperty("logServerHost","localhost");
         testProperties.setProperty("first","100");
