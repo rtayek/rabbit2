@@ -1,4 +1,4 @@
 this looks like the new version.
-android code is Cb2
+android code is Cb2 - but trying to make a new one called Cb20
 looks like the current software is in conradapps/rabbit and Cb7
 current ips 192.168.0.11-192.168.0.20

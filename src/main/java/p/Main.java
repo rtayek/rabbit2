@@ -31,19 +31,22 @@ public class Main implements Runnable {
         this.group=group;
         this.model=model;
         this.myService=myService;
-        sends=new Integer[group.last-group.first+1];
-        sendFailures=new Integer[group.last-group.first+1];
-        receives=new Integer[group.last-group.first+1];
-        for(int i=group.first;i<=group.last;i++) {
-            sends[i-group.first]=0;
-            sendFailures[i-group.first]=0;
-            receives[i-group.first]=0;
+        final int n=group.last-group.first+1;
+        sends=new Integer[n];
+        sendFailures=new Integer[n];
+        receives=new Integer[n];
+        for(int i=0;i<n;i++) {
+            sends[i]=0;
+            sendFailures[i]=0;
+            receives[i]=0;
         }
         model.addObserver(new Audio.AudioObserver(model));
     }
+    /*
     public static class Statistics { // if we use a set of static addresses
         Integer sends=0,sendFailures=0,receives=0;
     }
+    */
     public static class Group { // no need to clone unless we start storing
         // Map<SocketAddress,Statistics> statistics=new LinkedHashMap<>();
         // use the above if we go to a set of static addresses.
@@ -204,7 +207,7 @@ public class Main implements Runnable {
                         }
                         // if we use some random set of addresses instead of a range
                         // then we will need to keep the stats in maps.
-                        sends[k]++;
+                        sends[k]++; // what happens when this overflows? // wraps, nothing thrown
                     }
                 },"send #"+broadcasts+" to: "+inetSocketAddress).start();
             }
@@ -447,6 +450,12 @@ public class Main implements Runnable {
         //              deduce the ssid from wifi manager and deduce router from the ip address
         // maybe start out with no ssid and no router
         // and save what we can deduce in a properties file.
+        
+        // 8/3/18 not sure what we are doing now (coming back after a few years)
+        // so maybe just assume that we know the router and the ip address
+        // and maybe throw all the above stuff away until we really need it.
+        // maybe get the code coverage stuff working here, eclemma had problems updating :(
+        //
         Properties properties=properties(new File(propertiesFilename));
         p("propertied: "+properties);
         logging();
@@ -486,16 +495,16 @@ public class Main implements Runnable {
         defaultProperties.setProperty(PropertiesSubMenuItem.excludedRouter2.string,"false");
         //defaultProperties.setProperty("router","192.168.2.1");
         defaultProperties.setProperty("logServerHost","192.168.2.127");
-        defaultProperties.setProperty("first","100");
-        defaultProperties.setProperty("last","131");
+        defaultProperties.setProperty("first","2");
+        defaultProperties.setProperty("last","33");
     }
     public static final Properties testProperties=new Properties();
     static {
         testProperties.setProperty(ignorePropertyName,"false");
         testProperties.setProperty("router","192.168.1.1");
         testProperties.setProperty("logServerHost","localhost");
-        testProperties.setProperty("first","100");
-        testProperties.setProperty("last","131");
+        testProperties.setProperty("first","2");
+        testProperties.setProperty("last","33");
     }
     public static final Integer shortSleep=1_000,mediumSleep=10_000,longSleep=100_000;
 }
