@@ -33,9 +33,9 @@ public class IO {
         private Long t0;
     }
     static class Connection extends Thread {
-        Connection(Socket socket,Consumer<String> consumer,Consumer<Exception> exceptionConsumer,boolean outGoing) {
+        Connection(Socket socket,Consumer<String> stringConsumer,Consumer<Exception> exceptionConsumer,boolean outGoing) {
             this.socket=socket; // connected socket
-            this.stringConsumer=consumer;
+            this.stringConsumer=stringConsumer;
             this.exceptionConsumer=exceptionConsumer;
             setName("connection #"+serialNumber+(outGoing?" to: ":" from: ")+socket);
             InputStream inputStream=null;
@@ -106,16 +106,18 @@ public class IO {
                 }
             }
         }
-        public static Socket connect(InetSocketAddress inetSocketAddress,int timeout) {
+        public static Socket connect(InetSocketAddress inetSocketAddress,int timeout,Consumer<Exception> exceptionConsumer) {
             Socket socket=new Socket();
             try {
                 socket.connect(inetSocketAddress,timeout);
             } catch(Exception e) {
-                //p("connect to: "+inetSocketAddress+" caught: "+e);
+                if(exceptionConsumer!=null) exceptionConsumer.accept(e);
+                else p("connect to: "+inetSocketAddress+" caught: "+e);
                 try {
                     socket.close();
-                } catch(IOException e1) {
-                    p("caught: "+e1);
+                } catch(IOException e2) {
+                    if(exceptionConsumer!=null) exceptionConsumer.accept(e2);
+                    else p("caught: "+e2);
                 }
                 socket=null;
             }
@@ -126,7 +128,7 @@ public class IO {
             String host=arguments!=null&&arguments.length>0?arguments[0]:"192.168.1.6"; // was: 192.168.1.127
             InetSocketAddress inetSocketAddress=new InetSocketAddress(host,8080);
             p("socket address: "+inetSocketAddress);
-            Socket socket=connect(inetSocketAddress,5_000);
+            Socket socket=connect(inetSocketAddress,5_000,null);
             if(socket!=null) {
                 p("connected");
                 Connection incoming=new Connection(socket,new Consumer<String>() {
@@ -139,7 +141,7 @@ public class IO {
                     }
                 },true);
                 incoming.start();
-                Socket socket2=connect(inetSocketAddress,5_000);
+                Socket socket2=connect(inetSocketAddress,5_000,null);
                 Thread.sleep(5_000);
                 /*
                 Connection outgoing=new Connection(socket2,new Consumer<String>() {
@@ -180,6 +182,7 @@ public class IO {
         volatile Boolean isClosing=false;
         int sent,received,unexpected; // mostly for testing
         final int serialNumber=++serialNumbers;
+        public static final String timeOutMessage="connect timed out";
         static int serialNumbers=0;
     }
     static class Acceptor extends Thread {
@@ -215,7 +218,7 @@ public class IO {
                     // p(Thread.currentThread().getName()+" joining with:
                     // "+this);
                     try {
-                        this.join(3);
+                        this.join(3); // check this magic number!
                         // p("joined with: "+this);
                         // p("thread: "+toS(this));
                         if(!this.getState().equals(Thread.State.TERMINATED)) p("2 thread has strange state after join: "+toS(this));
