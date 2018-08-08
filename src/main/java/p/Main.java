@@ -6,7 +6,7 @@ import java.util.logging.*;
 import static p.IO.*;
 import static p.IO.Connection.*;
 import p.Enums.PropertiesSubMenuItem;
-import p.IO.Acceptor;
+import p.IO.*;
 //git fetch origin
 //git reset --hard origin/master
 // make sure the firewalls are off in windows!
@@ -47,6 +47,16 @@ public class Main implements Runnable {
         Integer sends=0,sendFailures=0,receives=0;
     }
     */
+    static class ExceptionConsumer implements Consumer<Exception> {
+        @Override public void accept(Exception exception) {
+            String message=exception.getMessage();
+            Integer n=map.get(message);
+            if(n==null) n=0;
+            map.put(message,n+1);
+            if(!message.equals(Connection.timeOutMessage)) p("send caught: "+exception);
+        }
+        Map<String,Integer> map=new LinkedHashMap<>();
+    }
     public static class Group { // no need to clone unless we start storing
         // Map<SocketAddress,Statistics> statistics=new LinkedHashMap<>();
         // use the above if we go to a set of static addresses.
@@ -77,12 +87,10 @@ public class Main implements Runnable {
         }
         boolean isInGroup(InetAddress ipAddress) {
             int lowOrderOctet=lowOrderOctet(ipAddress);
-            boolean isInRange=first<=lowOrderOctet&&lowOrderOctet<=last;
-            return isInRange;
+            return first<=lowOrderOctet&&lowOrderOctet<=last;
         }
         int service(InetAddress inetAddress,Integer myService) {
-            int service=myService!=null?myService:(serviceBase+lowOrderOctet(inetAddress));
-            return service;
+            return myService!=null?myService:(serviceBase+lowOrderOctet(inetAddress));
         }
         Set<InetSocketAddress> socketAddresses(InetAddress myInetAddress) {
             Set<InetSocketAddress> socketAddresses=new LinkedHashSet<>();
@@ -104,9 +112,9 @@ public class Main implements Runnable {
             return socketAddresses;
         }
         private boolean send(String string,InetSocketAddress inetSocketAddress) {
-            Socket socket=connect(inetSocketAddress,connectionTimeout);
+            Socket socket=connect(inetSocketAddress,connectionTimeout,exceptionConsumer);
             if(socket==null) return false;
-            Connection connection=new Connection(socket,null,null,true);
+            Connection connection=new Connection(socket,null,exceptionConsumer,true); // probably needs a try catch
             boolean ok=connection.send(string);
             connection.close();
             return ok;
@@ -114,8 +122,9 @@ public class Main implements Runnable {
         @Override public String toString() {
             return "Group [first="+first+", last="+last+", other="+other+", other2="+other2+", serviceBase="+serviceBase+", sameInetAddress="+sameInetAddress+"]";
         }
+        final ExceptionConsumer exceptionConsumer=new ExceptionConsumer();
         private final Integer first,last,other,other2;
-        public int connectionTimeout=200;
+        public int connectionTimeout=400; // was 200;
         public final int serviceBase=10_000;
         final boolean sameInetAddress;
     }
@@ -184,7 +193,7 @@ public class Main implements Runnable {
             return false;
         }
         public synchronized void stopListening() {
-            acceptor.close();
+            if(acceptor!=null) acceptor.close();
             isListening=false;
             // how about the connections?
             // close them also?
@@ -255,9 +264,16 @@ public class Main implements Runnable {
     }
     public String statistics() {
         String string="";
+        string+="          ";
+        for(int i=group.first;i<=group.last;i++) {
+            if(i<10) string+=' ';
+            string+=i+",";
+        }
+        string+='\n';
         string+="failures: "+Arrays.asList(sendFailures)+'\n';
         string+="sends:    "+Arrays.asList(sends)+'\n';
-        string+="receives: "+Arrays.asList(receives);
+        string+="receives: "+Arrays.asList(receives)+'\n';
+        string+=group.exceptionConsumer.map+"\n";
         return string;
     }
     protected void loop() {
@@ -450,7 +466,6 @@ public class Main implements Runnable {
         //              deduce the ssid from wifi manager and deduce router from the ip address
         // maybe start out with no ssid and no router
         // and save what we can deduce in a properties file.
-        
         // 8/3/18 not sure what we are doing now (coming back after a few years)
         // so maybe just assume that we know the router and the ip address
         // and maybe throw all the above stuff away until we really need it.
@@ -487,6 +502,7 @@ public class Main implements Runnable {
     public static String ignorePropertyName="ignore";
     public static String propertiesFilename="tablet.properties"; // may screw up testing
     public static final Properties defaultProperties=new Properties();
+    public static final String defaultFirst="2", defaultLast="21";
     static {
         defaultProperties.setProperty(ignorePropertyName,"true");
         //defaultProperties.setProperty("ssid","\"Linksys48993\"");
@@ -494,17 +510,17 @@ public class Main implements Runnable {
         //defaultProperties.setProperty(PropertiesSubMenuItem.excludedRouter1.string,"true");
         defaultProperties.setProperty(PropertiesSubMenuItem.excludedRouter2.string,"false");
         //defaultProperties.setProperty("router","192.168.2.1");
-        defaultProperties.setProperty("logServerHost","192.168.2.127");
-        defaultProperties.setProperty("first","2");
-        defaultProperties.setProperty("last","33");
+        defaultProperties.setProperty("logServerHost","192.168.1.8");
+        defaultProperties.setProperty("first",defaultFirst);
+        defaultProperties.setProperty("last",defaultLast);
     }
     public static final Properties testProperties=new Properties();
     static {
         testProperties.setProperty(ignorePropertyName,"false");
         testProperties.setProperty("router","192.168.1.1");
         testProperties.setProperty("logServerHost","localhost");
-        testProperties.setProperty("first","2");
-        testProperties.setProperty("last","33");
+        testProperties.setProperty("first",defaultFirst);
+        testProperties.setProperty("last",defaultLast);
     }
     public static final Integer shortSleep=1_000,mediumSleep=10_000,longSleep=100_000;
 }
