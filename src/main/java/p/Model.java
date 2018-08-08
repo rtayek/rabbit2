@@ -13,7 +13,6 @@ public class Model extends Observable implements Cloneable {
         for(int i=0;i<buttons;i++)
             states[i]=false;
         this.resetButtonId=resetButtonId;
-        // this.colors=new Colors();
         reset();
     }
     @Override public Model clone() {

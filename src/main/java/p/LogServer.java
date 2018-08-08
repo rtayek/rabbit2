@@ -243,7 +243,7 @@ public class LogServer implements Runnable {
                 while(true) {
                     printThreads();
                     try {
-                        Thread.sleep(10_000);
+                        Thread.sleep(300_000);
                     } catch(InterruptedException e) {
                         p(this+" caught: "+e);
                     }

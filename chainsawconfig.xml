@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE log4j:configuration >
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/" debug="true">
+<plugin name="XMLSocketReceiver" class="org.apache.log4j.net.XMLSocketReceiver">
+      <param name="decoder" value="org.apache.log4j.xml.UtilLoggingXMLDecoder"/>
+      <param name="Port" value="2222"/>
+   </plugin>
+<appender name="fileAppender" class="org.apache.log4j.RollingFileAppender">
+      <param name="Threshold" value="INFO" />
+      <param name="File" value="chainsawtablet.log"/>
+      <datePattern value="yyyyMMdd-HHmm" />
+      <layout class="org.apache.log4j.PatternLayout">
+         <param name="ConversionPattern" value="%d %-5p  [%c{1}] %m %n" />
+      </layout>
+   </appender>
+<root>
+  <priority value="debug"/>
+  <appender-ref ref="fileAppender" /> 
+</root>
+</log4j:configuration>

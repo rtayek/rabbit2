@@ -1,4 +1,11 @@
 this looks like the new version.
-android code is Cb2 - but trying to make a new one called Cb20
-looks like the current software is in conradapps/rabbit and Cb7
-current ips 192.168.0.11-192.168.0.20
+android code is Cb2 - but trying to make a new one called Cb20 - done and on github.
+looks like the current (joes) software is in conradapps/rabbit and Cb7.
+current ips in old system 192.168.0.11-192.168.0.20.
+changed first and last to conform with what netgear router on my system is doing now.
+getting some timeout errors after system is idle for a while, increased timeout from 200ms to 400 ms.
+left overnight, then got one failure on conrads nexus 7.
+jason likes: Samsung SM-T280, it is Marshmallow 6.0.
+logFileDirectory has log files from the local machine (i.e. this pc).
+logServerLogdirectory has files with log messages from the log server.
+orien - jennifer 714.828.4141
